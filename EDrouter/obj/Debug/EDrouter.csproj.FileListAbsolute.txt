@@ -1,0 +1,6 @@
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\bin\Debug\EDrouter.exe.config
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\bin\Debug\EDrouter.exe
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\bin\Debug\EDrouter.pdb
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\obj\Debug\EDrouter.csprojResolveAssemblyReference.cache
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\obj\Debug\EDrouter.exe
+c:\users\hantao zhong\documents\visual studio 2017\Projects\EDrouter\EDrouter\obj\Debug\EDrouter.pdb

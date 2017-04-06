@@ -250,3 +250,7 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Debug Folder
+./EDRouter/bin
+./EDRouter/obj

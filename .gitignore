@@ -250,10 +250,8 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
-<<<<<<< HEAD
 
 # Debug Folder
-./EDRouter/bin
-./EDRouter/obj
-=======
->>>>>>> refs/remotes/origin/master
+./EDRouter/bin/Debug
+./EDRouter/obj/Debug
+

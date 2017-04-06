@@ -251,6 +251,3 @@ paket-files/
 .idea/
 *.sln.iml
 
-# Debug Folder
-./EDRouter/bin
-./EDRouter/obj

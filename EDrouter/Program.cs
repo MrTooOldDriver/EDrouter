@@ -7,6 +7,7 @@ using System.IO;
 using System.Security.Permissions;
 using System.Diagnostics;
 using System.Collections;
+using System.Net;
 
 namespace EDrouter
 {
@@ -15,6 +16,7 @@ namespace EDrouter
         static void Main(string[] args)
         {
             EDrunning.EDChecker();
+            Navigation.SearchSystem(); //导航测试用
             Console.ReadKey();
         }
     }
@@ -121,6 +123,46 @@ namespace EDrouter
             // 第一个返回的数值相当于时间戳，第二个返回值是字符串，第三个是一个数组
             Console.WriteLine("debug Reader()返回值: " + EDlogReader.Reader());
             return;
+        }
+    }
+    class Navigation
+    {
+        public static void SearchSystem()
+        {
+            //string EDSMhttp = "https://www.edsm.net/api-v1/sphere-systems" ; From EDSM: If you need to do some testing on our API, please use the http://beta.edsm.net:8080/ endpoint.
+            string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
+            //string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; Other method
+            string userSystemName = "Fehu"; //玩家所在位置
+            double radius = 23.33; //玩家船只最大跃迁距离
+            string result = ""; //空的，留作输出
+            string searchName = "systemName=" + userSystemName;
+            string searchRadius = "radius=" + radius;
+            Console.WriteLine("以"+searchName+"这个星系为中心半径"+radius+"LY搜索");
+            string finalSearch = searchName + "&" + searchRadius;
+            Console.WriteLine("最终搜索参数"+finalSearch);
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(EDSMhttp_debug);
+            req.Method = "POST";
+            req.ContentType = "application/x-www-form-urlencoded";
+            byte[] data = Encoding.UTF8.GetBytes(finalSearch);
+            Console.WriteLine(data);
+            req.ContentLength = data.Length;
+            using (Stream reqStream = req.GetRequestStream())
+            {
+                reqStream.Write(data, 0, data.Length);
+                reqStream.Close();
+            }
+            HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
+            Stream stream = resp.GetResponseStream();
+            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                result = reader.ReadToEnd();
+                Console.WriteLine(result);
+            }
+            // 导航过程中用导航点通过EDSM数据库搜索 HTTP请求
+            // 14.04.2017 5:05 UTC+8
+            // 目前这个方法采用EDSM API Get systems in a sphere
+            // 另外还有一个方法是 EDSM API Get systems in a cube 
+            // 数据的准确性和这两个方法的区别还有待考证
         }
     }
 }

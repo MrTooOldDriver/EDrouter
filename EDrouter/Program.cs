@@ -158,6 +158,7 @@ namespace EDrouter
                 result = reader.ReadToEnd();
                 Console.WriteLine(result);
             }
+            Console.WriteLine("搜索结果" + result);
             // 导航过程中用导航点通过EDSM数据库搜索 HTTP请求
             // 14.04.2017 5:05 UTC+8
             // 目前这个方法采用EDSM API Get systems in a sphere

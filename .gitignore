@@ -254,3 +254,5 @@ paket-files/
 # Debug Folder
 ./EDRouter/bin/Debug
 ./EDRouter/obj/Debug
+./bin/Debug
+./obj/Debug

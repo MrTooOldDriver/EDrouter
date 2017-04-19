@@ -252,7 +252,9 @@ paket-files/
 *.sln.iml
 
 # Debug Folder
-./EDRouter/bin/Debug
-./EDRouter/obj/Debug
-./bin/Debug
-./obj/Debug
+./EDRouter/bin/Debug/
+./EDRouter/obj/Debug/
+./bin/Debug/
+./obj/Debug/
+bin/Debug/
+obj/Debug/

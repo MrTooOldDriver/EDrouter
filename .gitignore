@@ -258,3 +258,5 @@ paket-files/
 ./obj/Debug/
 bin/Debug/
 obj/Debug/
+EDRouter/bin/Debug/
+EDRouter/obj/Debug/

@@ -16,7 +16,7 @@ namespace EDrouter
         static void Main(string[] args)
         {
             EDrunning.EDChecker();
-            Navigation.SearchSystem(); //导航测试用
+            Navigation.SearchSystem("Quince"); //导航测试用
             Console.ReadKey();
         }
     }
@@ -127,18 +127,25 @@ namespace EDrouter
     }
     class Navigation
     {
-        public static void SearchSystem()
+        
+        public static void SearchSystem(string target)
         {
+            // 修改此处代码为获取玩家位置坐标 临时测试用代码 
             //string EDSMhttp = "https://www.edsm.net/api-v1/sphere-systems" ; From EDSM: If you need to do some testing on our API, please use the http://beta.edsm.net:8080/ endpoint.
-            string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
-            //string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; Other method
-            string userSystemName = "Fehu"; //玩家所在位置
-            double radius = 23.33; //玩家船只最大跃迁距离
+            // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
+            // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; //Other method
+            string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/system"; // EDSM TEST API
+            string userSystemName = target; //玩家所在位置
+            //double radius = 23.33; //玩家船只最大跃迁距离
             string result = ""; //空的，留作输出
             string searchName = "systemName=" + userSystemName;
-            string searchRadius = "radius=" + radius;
-            Console.WriteLine("以"+searchName+"这个星系为中心半径"+radius+"LY搜索");
-            string finalSearch = searchName + "&" + searchRadius;
+            string searchParameter = "showCoordinates=1";
+            //string searchRadius = "radius=" + radius;
+            // string searchRadius = "size=" + radius;//other method
+            // Console.WriteLine("以"+searchName+"这个星系为中心半径"+radius+"LY搜索");
+            Console.WriteLine("以" + searchName + "这个星系进行坐标确认");
+            // string finalSearch = searchName + "&" + searchRadius;
+            string finalSearch = searchName + "&" + searchParameter;
             Console.WriteLine("最终搜索参数"+finalSearch);
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(EDSMhttp_debug);
             req.Method = "POST";
@@ -158,11 +165,26 @@ namespace EDrouter
                 result = reader.ReadToEnd();
                 Console.WriteLine(result);
             }
+            Console.WriteLine("搜索结果" + result);
             // 导航过程中用导航点通过EDSM数据库搜索 HTTP请求
             // 14.04.2017 5:05 UTC+8
             // 目前这个方法采用EDSM API Get systems in a sphere
             // 另外还有一个方法是 EDSM API Get systems in a cube 
             // 数据的准确性和这两个方法的区别还有待考证
+
+            // 导航步骤 假设ANACONDA 50LY PRE JUMP FROM SOL TO SA A*
+            // 玩家位置 从EDSM获取坐标（或者本地数据库） 通过坐标在本地数据库搜索500lY（50LY*10）内（或者EDSM在线搜索） 返回星系名字
+            // 在本地中子星数据库搜索 返回星系名字+坐标 if no 扩大搜索范围到50LY*20 1000LY  还是没有 返回数据库数据不足         ***EDSM会不会被这个搞炸了？
+            // 通过SOL和SA A*坐标计算出三位内直线方程式SR 计算辅助路径点（每隔1000LY所放置的一个虚拟坐标点，用于参照）
+            // 计算搜索出来的中子星与SR线的距离 同时计算PLAYER到中子星的距离 择优选择 为第一个导航点
+            // 继续计算 以第一个导航点 直线到SR的线 的点为路径提交EDSM搜索
+            // repeat 直到在200LY（50LY*2）内发现目标星系
+            // 可能还要额外加一个目的地确认搜索算法？
+
+            // pre-alpha v1 算法 等做出算法之后需要通过ED内实际验证 通过EDD同步飞行数据进行测试 19.04.2017 03:28
+            // 接下来写一个读取result json的 导出
+            
+            
         }
     }
 }

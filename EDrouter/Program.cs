@@ -1,4 +1,4 @@
-﻿using System;
+﻿    using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,15 +8,18 @@ using System.Security.Permissions;
 using System.Diagnostics;
 using System.Collections;
 using System.Net;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
-namespace EDrouter
+namespace EDNavgation
 {
     class Program
     {
         static void Main(string[] args)
         {
             EDrunning.EDChecker();
-            Navigation.SearchSystem("Quince"); //导航测试用
+            //Navigation.SearchSystem(); //导航测试用
+            Navigation.Calculation();
             Console.ReadKey();
         }
     }
@@ -128,16 +131,16 @@ namespace EDrouter
     class Navigation
     {
         
-        public static void SearchSystem(string target)
+        public static string SearchSystem(string searchResult)
         {
             // 修改此处代码为获取玩家位置坐标 临时测试用代码 
             //string EDSMhttp = "https://www.edsm.net/api-v1/sphere-systems" ; From EDSM: If you need to do some testing on our API, please use the http://beta.edsm.net:8080/ endpoint.
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; //Other method
             string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/system"; // EDSM TEST API
-            string userSystemName = target; //玩家所在位置
+            string userSystemName = "Quince"; //玩家所在位置
             //double radius = 23.33; //玩家船只最大跃迁距离
-            string result = ""; //空的，留作输出
+            //string searchResult = ""; //空的，留作输出
             string searchName = "systemName=" + userSystemName;
             string searchParameter = "showCoordinates=1";
             //string searchRadius = "radius=" + radius;
@@ -162,10 +165,11 @@ namespace EDrouter
             Stream stream = resp.GetResponseStream();
             using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
             {
-                result = reader.ReadToEnd();
-                Console.WriteLine(result);
+                searchResult = reader.ReadToEnd();
+                Console.WriteLine(searchResult);
             }
-            Console.WriteLine("搜索结果" + result);
+            Console.WriteLine("搜索结果" + searchResult);
+            return searchResult;
             // 导航过程中用导航点通过EDSM数据库搜索 HTTP请求
             // 14.04.2017 5:05 UTC+8
             // 目前这个方法采用EDSM API Get systems in a sphere
@@ -186,5 +190,52 @@ namespace EDrouter
             
             
         }
+        public class Coordinate //json 初始化 
+        {
+            public string name { get; set; }
+            public double x { get; set; }
+            public double y { get; set; }
+            public double z { get; set; }
+            public object coords { get; set; }
+        }
+        public static void Calculation()
+        {
+            string returnResultFromSearch = Navigation.SearchSystem("");
+            Console.WriteLine("返回值"+returnResultFromSearch);
+            // WTFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+            // STM 到底怎么反实例
+            // 完全看不懂那些百度出来的教程
+            // 我心累dud
+            // 20.04.2017 02:57
+            Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
+            //Console.WriteLine(""+target.x+target.y+target.z+target.name+target.coords);
+            string jsonReturn = Convert.ToString(target.coords);
+            Console.WriteLine(""+jsonReturn);
+            Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
+            Console.WriteLine("目标"+target.name+"X坐标为"+ target_cood.x+"Y坐标为" + target_cood.y+ "Z坐标为" + target_cood.z);
+            // 反实例，写三维
+            // 假设此处玩家在SOL 0 0 0， 等待neko的代码
+            double anaconda = 50; //暂时假设这艘anaconda能跳50LY
+            double playerX = 0;
+            double playerY = 0;
+            double playerZ = 0;
+            double playerR = coordConvertToR(playerX, playerY, playerZ);
+            double targetR = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
+            //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));
+            double distanceBetween = System.Math.Abs(playerR - targetR);
+            Console.WriteLine("两地直线距离" + distanceBetween + "LY");
+            double choosePoint = System.Math.Truncate(System.Math.Abs(distanceBetween / (anaconda *4)));
+            Console.WriteLine("高速路搜索点"+choosePoint+"个");
+        }
+
+        public static double coordConvertToR(double X, double Y, double Z)
+        {
+            double r = System.Math.Sqrt(X * X + Y * Y + Z * Z);
+            Console.WriteLine(r);
+            return r;
+        }
+
+
+
     }
 }

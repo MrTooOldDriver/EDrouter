@@ -10,6 +10,8 @@ using System.Collections;
 using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Windows;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace EDNavgation
 {
@@ -138,7 +140,7 @@ namespace EDNavgation
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; //Other method
             string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/system"; // EDSM TEST API
-            string userSystemName = "Quince"; //玩家所在位置
+            string userSystemName = "Pyramio GO-K c24-8"; //玩家所在位置
             //double radius = 23.33; //玩家船只最大跃迁距离
             //string searchResult = ""; //空的，留作输出
             string searchName = "systemName=" + userSystemName;
@@ -198,35 +200,84 @@ namespace EDNavgation
             public double z { get; set; }
             public object coords { get; set; }
         }
-        public static void Calculation()
+        public static void Calculation() //算法复杂，待功能完善之后进行优化
         {
             string returnResultFromSearch = Navigation.SearchSystem("");
             Console.WriteLine("返回值"+returnResultFromSearch);
-            // WTFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-            // STM 到底怎么反实例
-            // 完全看不懂那些百度出来的教程
-            // 我心累dud
-            // 20.04.2017 02:57
             Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
+
             //Console.WriteLine(""+target.x+target.y+target.z+target.name+target.coords);
+
             string jsonReturn = Convert.ToString(target.coords);
             Console.WriteLine(""+jsonReturn);
             Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
+
             Console.WriteLine("目标"+target.name+"X坐标为"+ target_cood.x+"Y坐标为" + target_cood.y+ "Z坐标为" + target_cood.z);
+
             // 反实例，写三维
             // 假设此处玩家在SOL 0 0 0， 等待neko的代码
-            double anaconda = 50; //暂时假设这艘anaconda能跳50LY
-            double playerX = 0;
-            double playerY = 0;
-            double playerZ = 0;
-            double playerR = coordConvertToR(playerX, playerY, playerZ);
+
+            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
+            double playerX = 46.375;
+            double playerY = -448.6875;
+            double playerZ = -127.125; //debug 暂时设定玩家位置
+            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
+            double searchVar = 0.5; //搜索范围变量 从1-0.0 
+
+            target_cood.x = target_cood.x - playerX;
+            target_cood.y = target_cood.y - playerY;
+            target_cood.z = target_cood.z - playerZ; //更新目标绝对坐标系至相对坐标系 （相对出发点）
+
+            // target_cood 现在是相对坐标系
+            // player 现在是相对坐标系的原点 0 0 0
+            //直角坐标系操作
+
+            Console.WriteLine(target_cood.x + "," + target_cood.y + "," + target_cood.z + ","); //debug
+            //double playerR = coordConvertToR(playerX, playerY, playerZ); //潜在多余或错误算法，暂时删除
             double targetR = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
-            //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));
-            double distanceBetween = System.Math.Abs(playerR - targetR);
-            Console.WriteLine("两地直线距离" + distanceBetween + "LY");
-            double choosePoint = System.Math.Truncate(System.Math.Abs(distanceBetween / (anaconda *4)));
-            Console.WriteLine("高速路搜索点"+choosePoint+"个");
+            //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));//错误
+            //double distanceBetween = System.Math.Abs(playerR - targetR); 错误算法
+            Console.WriteLine("两地直线距离" + targetR + "LY");
+            //double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda *4)));
+            double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda ))); //跳跃次数处理
+            Console.WriteLine("高速路预搜索点"+choosePoint+"个");
+
+            //直角坐标系至球坐标系 player为原点 0 0 0
+            //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
+            double target_Scood_R = coordConvertToR(target_cood.x,target_cood.y,target_cood.z);
+            double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
+            Console.WriteLine("S_cood, R=" + target_Scood_R + "; T=" + target_Scood_T + "; P=" + target_Scood_P);
+            //target_Scood 现在是球坐标系状态
+
+            //潜在BUG，目前都在用double，可以获取高精度但是一旦奇怪的数字进这套算法系统可能崩溃
+            //对策 改float类
+            //嘿少年，该整理代码了
+
+            Point3D Navpoint = new Point3D(0,0,0);
+
+            // ArrayList choosePointToE = new ArrayList();
+            for (int counter = 0; counter <= 1000; counter++)
+            {
+                if (counter > choosePoint)
+                    break;
+                double arrPoint = 0;
+                arrPoint = arrPoint + (counter * anaconda );
+
+                Navpoint.X = Convert.ToSingle((ScoordConvertToX(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
+                Navpoint.Y = Convert.ToSingle((ScoordConvertToY(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
+                Navpoint.Z = Convert.ToSingle((ScoordConvertToZ(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
+
+                //choosePointToE.Add(Navpoint);
+                //Console.WriteLine(Navpoint);
+                Console.WriteLine(arrPoint);
+            }
+            //Console.WriteLine(choosePointToE);
+
+
         }
+
+        //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
 
         public static double coordConvertToR(double X, double Y, double Z)
         {
@@ -235,7 +286,39 @@ namespace EDNavgation
             return r;
         }
 
+        public static double coordConvertToT(double X, double Y, double Z)
+        {
+            double t = Math.Acos(Z / System.Math.Sqrt(X * X + Y * Y + Z * Z));
+            Console.WriteLine(t);
+            return t;
+        }
 
+        public static double coordConvertToP(double X, double Y, double Z)
+        {
+            double p = Math.Atan(Y / X);
+            Console.WriteLine(p);
+            return p;
+        }
 
+        public static double ScoordConvertToX(double R, double T, double P)
+        {
+            double x = R * Math.Sin(T) * Math.Cos(P);
+            Console.WriteLine(x);
+            return x;
+        }
+
+        public static double ScoordConvertToY(double R, double T, double P)
+        {
+            double y = R * Math.Sin(T) * Math.Sin(P);
+            Console.WriteLine(y);
+            return y;
+        }
+
+        public static double ScoordConvertToZ(double R, double T, double P)
+        {
+            double z = R * Math.Cos(T);
+            Console.WriteLine(z);
+            return z;
+        }
     }
 }

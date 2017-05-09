@@ -1,4 +1,4 @@
-﻿    using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +23,8 @@ namespace EDNavgation
             //Navigation.SearchSystem(); //导航测试用
             Navigation.Calculation();
             Console.ReadKey();
+            //De-Comment to Enable Debug Modules
+            Debug.Module();
         }
     }
     // [PermissionSet(SecurityAction.Demand, Name = "FullTrust")] 系统权限相关
@@ -45,13 +47,15 @@ namespace EDNavgation
             {
                 Console.WriteLine("ED 64 is running");
                 EDlogReader.Reader();
-                EDReadlog.Reading();
+                LogExtractor.Read();
+                Parser.JSONHandler();
             }
             else
             {
                 Console.WriteLine("ED 64 is not running");
                 EDlogReader.Reader();
-                EDReadlog.Reading();
+                LogExtractor.Read();
+                Parser.JSONHandler();
                 //return;
             }
 
@@ -109,9 +113,9 @@ namespace EDNavgation
             return loglocation;
         }
     }
-    class EDReadlog //读取ED的log并获取指定行来获取玩家位置
+    class LogExtractor //读取ED的log并获取指定行来获取玩家位置
     {
-        public static void Reading()
+        public static String Read()
         {
             // log的文件结构采用json的模式
             // 先读取第一个头文件值：timestamp，寻找最后一次更新并且包含有这样一条
@@ -123,13 +127,93 @@ namespace EDNavgation
 
             string logPath = EDlogReader.Reader();
             
+            // 创建一个新的动态数组
+            ArrayList logArray = new ArrayList();
+
+            // 循环遍历log文件并且存储到动态数组中
+            int counterArrayController = 0;
+            string line = string.Empty;
+
+            System.IO.StreamReader file = new System.IO.StreamReader(logPath);
+            while ((line = file.ReadLine()) != null)
+            {
+                logArray.Add(line);
+                counterArrayController++;
+            }
+
+            // 读取最后一项相关条目并且返回相关数据
+            //Console.WriteLine("Journal的长度是：" + logArray.Count);
+            //Console.WriteLine("正在查询指挥官最后一处位置...");
+
+            string Output = String.Empty;
+            int counterArrayReader = logArray.Count - 1;
+            for (int a = counterArrayReader; a > 0; a--)
+            {
+                string logLine = logArray[a].ToString();
+                if (logLine.Contains("StarPos"))
+                {
+                    Output = logLine;
+                    a = -1;
+                }
+            }
 
             // Reading这里要返回三个数值，FSDJump with timestamp、StarSystem以及StarPos
             // 第一个返回的数值相当于时间戳，第二个返回值是字符串，第三个是一个数组
-            Console.WriteLine("debug Reader()返回值: " + EDlogReader.Reader());
-            return;
+            return Output;
         }
     }
+
+    class Data
+    {
+        public string TimeStamp { get; set; }
+        public string Event { get; set; }
+        public string StarSystem { get; set; }
+        public double[] StarPos { get; set; }
+        public string SystemAllegiance { get; set; }
+        public string SystemEconomy { get; set; }
+        public string SystemGovernment { get; set; }
+        public string SystemSecurity { get; set; }
+        public string Body { get; set; }
+        public string BodyType { get; set; }
+        public double JumpDist { get; set; }
+        public double FuelUsed { get; set; }
+        public double FuelLevel { get; set; }
+    }
+
+    class Parser
+    {
+        public static Data JSONHandler()
+        {
+            string Line = LogExtractor.Read();
+            //string List = string.Empty;
+            //List<Data> outputList = JsonConvert.DeserializeObject<Data>(List);
+            Data List = JsonConvert.DeserializeObject<Data>(Line);
+            Console.WriteLine("指挥官当前位置是：" + List.StarSystem);
+
+            /************************************************************************************************************************
+             *                                                        文档
+             *  想获取相关数据的时候，请请求Parser下的类成员。
+             *  包含了：
+             *  Parser.JSONHandler().TimeStamp          | 返回时间戳                                             | [字符串型] 
+             *  Parser.JSONHandler().Event              | 返回事件类型（目前只有Location或者FSDJump）            | [字符串型] 
+             *  Parser.JSONHandler().StarSystem         | 返回当前星系名称                                       | [字符串型] 
+             *  Parser.JSONHandler().StarPos            | 返回当前星系坐标                                       | [双精度浮点数组型] 
+             *  Parser.JSONHandler().SystemAllegianc    | 返回当前星系效忠的势力                                 | [字符串型] 
+             *  Parser.JSONHandler().SystemEconomy      | 返回当前星系经济类型                                   | [字符串型] 
+             *  Parser.JSONHandler().SystemGovernment   | 返回当前星系政府类型                                   | [字符串型] 
+             *  Parser.JSONHandler().SystemSecurity     | 返回当前星系安全等级                                   | [字符串型] 
+             *  Parser.JSONHandler().Body               | 返回当前所在星体名字（仅在Location的Event下有效）      | [字符串型] 
+             *  Parser.JSONHandler().BodyType           | 返回当前所在星体类型（仅在Location的Event下有效）      | [字符串型] 
+             *  Parser.JSONHandler().JumpDist           | 返回此次跳跃的距离（仅在FSDJump的Event下有效）         | [双精度浮点型] 
+             *  Parser.JSONHandler().FuelUsed           | 返回此次跳跃消耗的燃料（仅在FSDJump的Event下有效）     | [双精度浮点型] 
+             *  Parser.JSONHandler().FuelLevel          | 返回当前的燃料状态（仅在FSDJump的Event下有效）         | [双精度浮点型] 
+            ************************************************************************************************************************/
+
+            return List;
+        }
+
+    }
+
     class Navigation
     {
         
@@ -319,6 +403,14 @@ namespace EDNavgation
             double z = R * Math.Cos(T);
             Console.WriteLine(z);
             return z;
+        }
+    }
+    class Debug
+    {
+        public static void Module()
+        {
+            Parser.JSONHandler();
+            Console.WriteLine(Parser.JSONHandler().StarSystem);
         }
     }
 }

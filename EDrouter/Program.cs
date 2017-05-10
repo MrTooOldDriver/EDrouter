@@ -351,9 +351,10 @@ namespace EDNavgation
                 Navpoint.X = Convert.ToSingle((ScoordConvertToX(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
                 Navpoint.Y = Convert.ToSingle((ScoordConvertToY(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
                 Navpoint.Z = Convert.ToSingle((ScoordConvertToZ(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
+                //Navpoint 绝对坐标系
+
 
                 //choosePointToE.Add(Navpoint);
-                //Console.WriteLine(Navpoint);
                 Console.WriteLine(arrPoint);
             }
             //Console.WriteLine(choosePointToE);

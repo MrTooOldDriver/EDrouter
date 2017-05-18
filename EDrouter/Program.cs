@@ -12,6 +12,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Windows;
 using System.Windows.Forms.DataVisualization.Charting;
+using MySql.Data.MySqlClient;
+using System.Windows.Forms; //非GUI一部分，开发所用
+using System.Drawing; //开发用
 
 namespace EDNavgation
 {
@@ -21,7 +24,13 @@ namespace EDNavgation
         {
             EDrunning.EDChecker();
             //Navigation.SearchSystem(); //导航测试用
-            Navigation.Calculation();
+            string firstResultTest = Navigation.FirstCalculation();
+
+            Console.WriteLine("首次搜索输出" + firstResultTest);
+            
+            //Navigation.SecondaryCalculation(firstResultTest); 第一套算法
+            Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
+
             Console.ReadKey();
             //De-Comment to Enable Debug Modules
             Debug.Module();
@@ -75,6 +84,7 @@ namespace EDNavgation
             //以上是已经弃用的代码
         }
     }
+
     class EDlogReader
     {
         // [PermissionSet(SecurityAction.Demand, Name = "FullTrust")] //系统权限
@@ -113,6 +123,7 @@ namespace EDNavgation
             return loglocation;
         }
     }
+
     class LogExtractor //读取ED的log并获取指定行来获取玩家位置
     {
         public static String Read()
@@ -223,10 +234,14 @@ namespace EDNavgation
             //string EDSMhttp = "https://www.edsm.net/api-v1/sphere-systems" ; From EDSM: If you need to do some testing on our API, please use the http://beta.edsm.net:8080/ endpoint.
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/sphere-systems";
             // string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/cube-systems"; //Other method
+
             string EDSMhttp_debug = "http://beta.edsm.net:8080/api-v1/system"; // EDSM TEST API
-            string userSystemName = "Pyramio GO-K c24-8"; //玩家所在位置
+            string userSystemName = "Pyramio GO-K c24-8"; //目标星系
+
+
             //double radius = 23.33; //玩家船只最大跃迁距离
             //string searchResult = ""; //空的，留作输出
+
             string searchName = "systemName=" + userSystemName;
             string searchParameter = "showCoordinates=1";
             //string searchRadius = "radius=" + radius;
@@ -236,6 +251,7 @@ namespace EDNavgation
             // string finalSearch = searchName + "&" + searchRadius;
             string finalSearch = searchName + "&" + searchParameter;
             Console.WriteLine("最终搜索参数"+finalSearch);
+
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(EDSMhttp_debug);
             req.Method = "POST";
             req.ContentType = "application/x-www-form-urlencoded";
@@ -276,6 +292,7 @@ namespace EDNavgation
             
             
         }
+
         public class Coordinate //json 初始化 
         {
             public string name { get; set; }
@@ -284,29 +301,32 @@ namespace EDNavgation
             public double z { get; set; }
             public object coords { get; set; }
         }
-        public static void Calculation() //算法复杂，待功能完善之后进行优化
+
+        public static string FirstCalculation() //算法复杂，待功能完善之后进行优化
         {
             string returnResultFromSearch = Navigation.SearchSystem("");
-            Console.WriteLine("返回值"+returnResultFromSearch);
+            //Console.WriteLine("返回值"+returnResultFromSearch);
             Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
 
             //Console.WriteLine(""+target.x+target.y+target.z+target.name+target.coords);
 
             string jsonReturn = Convert.ToString(target.coords);
-            Console.WriteLine(""+jsonReturn);
+            //Console.WriteLine(""+jsonReturn);
             Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
 
-            Console.WriteLine("目标"+target.name+"X坐标为"+ target_cood.x+"Y坐标为" + target_cood.y+ "Z坐标为" + target_cood.z);
+            //Console.WriteLine("目标"+target.name+"X坐标为"+ target_cood.x+"Y坐标为" + target_cood.y+ "Z坐标为" + target_cood.z);
 
             // 反实例，写三维
             // 假设此处玩家在SOL 0 0 0， 等待neko的代码
+
+            Console.WriteLine("**************"+Parser.JSONHandler().StarPos);
 
             double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
             double playerX = 46.375;
             double playerY = -448.6875;
             double playerZ = -127.125; //debug 暂时设定玩家位置
             double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
-            double searchVar = 0.5; //搜索范围变量 从1-0.0 
+            double searchVar = 0.5; //搜索范围变量 从1-0.2 
 
             target_cood.x = target_cood.x - playerX;
             target_cood.y = target_cood.y - playerY;
@@ -321,10 +341,10 @@ namespace EDNavgation
             double targetR = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
             //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));//错误
             //double distanceBetween = System.Math.Abs(playerR - targetR); 错误算法
-            Console.WriteLine("两地直线距离" + targetR + "LY");
+            //Console.WriteLine("两地直线距离" + targetR + "LY");
             //double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda *4)));
-            double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda ))); //跳跃次数处理
-            Console.WriteLine("高速路预搜索点"+choosePoint+"个");
+            double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda *6))); //跳跃次数处理
+            //Console.WriteLine("高速路预搜索点"+choosePoint+"个");
 
             //直角坐标系至球坐标系 player为原点 0 0 0
             //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
@@ -332,38 +352,596 @@ namespace EDNavgation
             double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
             double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
             Console.WriteLine("S_cood, R=" + target_Scood_R + "; T=" + target_Scood_T + "; P=" + target_Scood_P);
-            //target_Scood 现在是球坐标系状态
+            //target_Scood 现在是球坐标系状态 相对坐标
 
             //潜在BUG，目前都在用double，可以获取高精度但是一旦奇怪的数字进这套算法系统可能崩溃
             //对策 改float类
-            //嘿少年，该整理代码了
+
+            //搜索校验值 最大（var=1）为左右上下180度大扇面 最小var=0.2 左右上下36度小扇面
+            double Verify_T_Upper = target_Scood_T + (180 / searchVar);
+            double Verify_T_Lower = target_Scood_T - (180 / searchVar);
+            double Verify_P_Upper = target_Scood_P + (180 / searchVar);
+            double Verify_P_Lower = target_Scood_P - (180 / searchVar);
+            //这段代码好像没用上??? ←我SB了，其实用上了，在下面做中子星多选项和单选项筛选的时候
+
+            //Debug用的textbox
+            TextBox textbox1 = new TextBox();
+
+            ArrayList FinalList = new ArrayList();
+
+            //debug. using loacl database.
+            string sql;
+            string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
+            MySqlConnection conn = new MySqlConnection(ConnectionString);
+            string ResultFromDatabase;
+            
+            //debug
 
             Point3D Navpoint = new Point3D(0,0,0);
+            ArrayList FirstList = new ArrayList();
+            ArrayList SecondList = new ArrayList();
 
             // ArrayList choosePointToE = new ArrayList();
-            for (int counter = 0; counter <= 1000; counter++)
+            for (double counter = 0; counter <= 1000; counter++)
             {
                 if (counter > choosePoint)
                     break;
                 double arrPoint = 0;
-                arrPoint = arrPoint + (counter * anaconda );
+                arrPoint = arrPoint + (counter * anaconda * 6);
 
-                Navpoint.X = Convert.ToSingle((ScoordConvertToX(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
-                Navpoint.Y = Convert.ToSingle((ScoordConvertToY(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
-                Navpoint.Z = Convert.ToSingle((ScoordConvertToZ(arrPoint, target_Scood_T, target_Scood_P)) - playerX);
+                Navpoint.X = Convert.ToSingle((ScoordConvertToX(arrPoint, target_Scood_T, target_Scood_P)) + playerX);
+                Navpoint.Y = Convert.ToSingle((ScoordConvertToY(arrPoint, target_Scood_T, target_Scood_P)) + playerY);
+                Navpoint.Z = Convert.ToSingle((ScoordConvertToZ(arrPoint, target_Scood_T, target_Scood_P)) + playerZ);
                 //Navpoint 绝对坐标系
 
+                double VarTestInt = 6;
 
-                //choosePointToE.Add(Navpoint);
-                Console.WriteLine(arrPoint);
+                //double searchBetween_X_Upper = Navpoint.X + (anaconda * 6); //*6是变量
+                double searchBetween_X_Upper = Navpoint.X + (anaconda * VarTestInt);
+                double searchBetween_X_Lower = Navpoint.X - (anaconda * VarTestInt);
+                double searchBetween_Y_Upper = Navpoint.Y + (anaconda * VarTestInt); 
+                double searchBetween_Y_Lower = Navpoint.Y - (anaconda * VarTestInt);
+                double searchBetween_Z_Upper = Navpoint.Z + (anaconda * VarTestInt); 
+                double searchBetween_Z_Lower = Navpoint.Z - (anaconda * VarTestInt);
+
+                conn.Open();
+
+                sql = "SELECT * FROM db WHERE X BETWEEN " + searchBetween_X_Lower + " AND " + searchBetween_X_Upper + " AND Y BETWEEN " + searchBetween_Y_Lower + " AND " + searchBetween_Y_Upper + " AND Z BETWEEN " +searchBetween_Z_Lower + " AND "+ searchBetween_Z_Upper; 
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd = new MySqlCommand(sql, conn);
+                Console.WriteLine("打开连接,开始第"+counter+"搜索");
+
+                bool cancel = false;
+
+               MySqlDataReader Reader = cmd.ExecuteReader();
+                while (Reader.Read())
+                {
+                    if (Reader.HasRows)
+                    {
+                        Console.WriteLine("已经发现");
+                        double tryFirst = coordConvertToR(
+                            target_cood.x - Convert.ToDouble(Reader.GetString("X")),
+                            target_cood.y - Convert.ToDouble(Reader.GetString("Y")),
+                            target_cood.z - Convert.ToDouble(Reader.GetString("Z"))
+                                                          );
+                        if (tryFirst < targetR)
+                        {
+                            cancel = true;
+                            Console.WriteLine("****核实确认****"+Reader.GetString("Name"));
+                            FirstList.Add(Reader.GetString("Name"));
+                        }
+                        else
+                        {
+                            Console.WriteLine("核实不通过");
+                        }
+                    }
+                    //string result = Reader.GetString("Name");
+                    //Console.WriteLine(result+ "在第" +counter);
+                }
+                if (cancel == true)
+                    conn.Close();
+                if (cancel == true)
+                    break;
+                conn.Close();
+
+                //上高速前若多个选项需要细致校对
+                //优选条件 离玩家近 或离判定点近
+                //第一下neutron 然后接下来要怎么搜索 
+                //搜索一下，反馈 要是有，一个一个校验距离搜索点的距离和离目标距离，择优选择
+                //要是第一下没有，就扩大双倍距离（这里取决于效率值了）然后有了
+                //还没有就直接计算下一个点搜索
+
+
+
             }
-            //Console.WriteLine(choosePointToE);
+           // Console.WriteLine("发现了" + FirstList.Count + "个选项");
+            //string FirstResult="";
+            string FirstResult = "";
 
+            if (FirstList.Count == 1) //临时
+            {
+                Console.WriteLine("本次只找到了一个选项，正在进行最终可靠性测试");
+                Console.WriteLine("导航参考点:" + Navpoint.X + " AND " + Navpoint.Y + " AND " + Navpoint.Z);
+
+                conn.Open();
+                string sqlSearch;
+                double X;
+                double Y;
+                double Z;
+                double NeutronP;
+                double NeutronT;
+                sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                Console.WriteLine(FirstList[0].ToString());
+                MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
+                X = (double)cmd.ExecuteScalar();
+                sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                cmd = new MySqlCommand(sqlSearch, conn);
+                Y = (double)cmd.ExecuteScalar();
+                sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                cmd = new MySqlCommand(sqlSearch, conn);
+                Z = (double)cmd.ExecuteScalar();
+                conn.Close();
+                NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
+                NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
+                if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+                {
+                    Console.WriteLine("校验通过");
+                    return(FirstList[0].ToString());
+                }
+                else
+                {
+                    Console.WriteLine("校验不通过，放弃这个点搜索");
+                }
+            }
+            else //多结果筛选，离中心线（球坐标系T P 表达）越近，越容易被筛选 13.05.2017
+            {
+                string FromList;
+                string FromSecondList;
+                for (int counter = 0; counter  < FirstList.Count; counter++)
+                {
+                    FromList = FirstList[counter].ToString();
+                    Console.WriteLine("正在检测" + FromList + "是否最佳");
+                    string sqlSearch;
+                    double X;
+                    double Y;
+                    double Z;
+                    double NeutronP;
+                    double NeutronT;
+                    conn.Open();
+                    sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromList + "%'";
+                    Console.WriteLine(FromList);
+                    MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
+                    X = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromList + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Y = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromList + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Z = (double)cmd.ExecuteScalar();
+                    conn.Close();
+                    NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
+                    NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
+                    if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+                    {
+                        SecondList.Add(FromList);
+                        Console.WriteLine("***第一校验通过***");
+                    }
+                    else
+                    {
+                        Console.WriteLine("校验不通过，放弃对" +FromList+ "的选择");
+                    }
+                }
+
+                double final_pDiff=0;
+                double final_tDiff=0;
+                string final_Name="";
+                
+
+                for (int counter=0; counter < SecondList.Count; counter++)
+                {
+                    FromSecondList = FirstList[counter].ToString();
+                    string sqlSearch;
+                    double X;
+                    double Y;
+                    double Z;
+                    double pDiff;
+                    double tDiff;
+                    double NeutronP;
+                    double NeutronT;
+                    conn.Open();
+                    sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                    Console.WriteLine(FromSecondList);
+                    MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
+                    X = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Y = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Z = (double)cmd.ExecuteScalar();
+                    conn.Close();
+                    NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
+                    NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
+                    pDiff = Math.Abs(Math.Abs(NeutronP) - Math.Abs(target_Scood_P));
+                    tDiff = Math.Abs(Math.Abs(NeutronT) - Math.Abs(target_Scood_T));
+                    if (counter == 0)
+                    {
+                        final_pDiff = pDiff;
+                        final_tDiff = tDiff;
+                        final_Name = FromSecondList;
+                        Console.WriteLine("第一次写入，不对比");
+                    }
+                    else
+                    {
+                        if (pDiff < final_pDiff && tDiff < final_tDiff)
+                        {
+                            final_tDiff = pDiff;
+                            final_tDiff = tDiff;
+                            final_Name = FromSecondList;
+                        }
+                        else
+                        {
+                            Console.WriteLine(FromSecondList + "不是最优选项");
+                        }
+                    }
+                    Console.WriteLine("TEST" + final_Name);
+                    FirstResult = final_Name;
+                }
+                Console.WriteLine("TEST" + final_Name);
+                FirstResult = final_Name;
+            }
+            return FirstResult;
+        }
+
+        //public ArrayList YEEE = new ArrayList();
+
+        //ArrayList SecondaryCalculation = new ArrayList(); 做好了再说
+        public static void SecondaryCalculation(string FirstResult)
+        {
+            Console.WriteLine("输入:" + FirstResult);
+            ArrayList FinalOutput = new ArrayList();
+            FinalOutput.Add(FirstResult);
+            string sql;
+            string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
+            MySqlConnection conn = new MySqlConnection(ConnectionString);
+            double X;
+            double Y;
+            double Z;
+            conn.Open();
+            sql = "SELECT X FROM db WHERE Name Like '%" + FirstResult + "%'";
+            Console.WriteLine(FirstResult);
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            X = (double)cmd.ExecuteScalar();
+            sql = "SELECT Y FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            Y = (double)cmd.ExecuteScalar();
+            sql = "SELECT Z FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            Z = (double)cmd.ExecuteScalar();
+            conn.Close();
+
+            //******************************************************************************************************************** 
+
+            string returnResultFromSearch = Navigation.SearchSystem("");
+
+            //******************************************************************************************************************** 
+            //Console.WriteLine("返回值" + returnResultFromSearch);
+            Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
+
+            //Console.WriteLine(""+target.x+target.y+target.z+target.name+target.coords);
+
+            string jsonReturn = Convert.ToString(target.coords);
+            //Console.WriteLine("" + jsonReturn);
+            Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
+
+            Console.WriteLine("目标" + target.name + "X坐标为" + target_cood.x + "Y坐标为" + target_cood.y + "Z坐标为" + target_cood.z);
+
+            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
+            double playerX = 46.375;
+            double playerY = -448.6875;
+            double playerZ = -127.125; //debug 暂时设定玩家位置
+            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
+            double searchVar = 0.5; //搜索范围变量 从1-0.2 
+
+            target_cood.x = target_cood.x - playerX;
+            target_cood.y = target_cood.y - playerY;
+            target_cood.z = target_cood.z - playerZ; //更新目标绝对坐标系至相对坐标系 （相对出发点）
+            //这里还用playerR的原因很简单，就是基于线条搜索而不是中子星点搜索
+
+            double target_Scood_R = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
+
+            //*******************************************************************************************************************
+
+            double searchPoint_Scood_R = coordConvertToR(X, Y, Z);
+
+            Start:
+
+            //target_Scood_R = coordConvertToR(X, Y, Z);
+            double targetR = target_Scood_R;
+            Console.WriteLine("搜索距离上一个中子星"+searchPoint_Scood_R+"LY");
+
+            //更新搜索点
+
+            double searchPoint_X = ScoordConvertToX(searchPoint_Scood_R, target_Scood_T, target_Scood_P) + playerX;
+            double searchPoint_Y = ScoordConvertToY(searchPoint_Scood_R, target_Scood_T, target_Scood_P) + playerY;
+            double searchPoint_Z = ScoordConvertToZ(searchPoint_Scood_R, target_Scood_T, target_Scood_P) + playerZ;
+
+            //更新完毕 绝对坐标系
+
+            double VarTestInt = 6;
+
+            //double searchBetween_X_Upper = Navpoint.X + (anaconda * 6); //*6是变量
+            double searchBetween_X_Upper = searchPoint_X + (anaconda * VarTestInt );
+            double searchBetween_X_Lower = searchPoint_X - (anaconda * VarTestInt );
+            double searchBetween_Y_Upper = searchPoint_Y + (anaconda * VarTestInt );
+            double searchBetween_Y_Lower = searchPoint_Y - (anaconda * VarTestInt );
+            double searchBetween_Z_Upper = searchPoint_Z + (anaconda * VarTestInt );
+            double searchBetween_Z_Lower = searchPoint_Z - (anaconda * VarTestInt );
+            //中子星加速
+
+            ArrayList FirstList = new ArrayList();
+            ArrayList SecondList = new ArrayList();
+
+            //*******************************************************************************************************************
+            //参数准备区↑
+
+            
+
+            conn.Open();
+
+            sql = "SELECT * FROM db WHERE X BETWEEN " + searchBetween_X_Lower + " AND " + searchBetween_X_Upper + " AND Y BETWEEN " + searchBetween_Y_Lower + " AND " + searchBetween_Y_Upper + " AND Z BETWEEN " + searchBetween_Z_Lower + " AND " + searchBetween_Z_Upper;
+            cmd = new MySqlCommand(sql, conn);
+            //Console.WriteLine("打开连接,开始第" + counter + "搜索");
+
+           // bool cancel = false;
+
+            MySqlDataReader Reader = cmd.ExecuteReader();
+            while (Reader.Read())
+            {
+                if (Reader.HasRows)
+                {
+                    //Console.WriteLine("已经发现Secondary");
+                    double tryFirst = coordConvertToR(
+                        target_cood.x - Convert.ToDouble(Reader.GetString("X")),
+                        target_cood.y - Convert.ToDouble(Reader.GetString("Y")),
+                        target_cood.z - Convert.ToDouble(Reader.GetString("Z"))
+                                                      );
+                    if (tryFirst < targetR)
+                    {
+                        //cancel = true;
+                        Console.WriteLine("****核实确认Secondary****" + Reader.GetString("Name"));
+                        FirstList.Add(Reader.GetString("Name"));
+                    }
+                    else
+                    {
+                        Console.WriteLine("Secondary核实不通过");
+                    }
+                }
+                //string result = Reader.GetString("Name");
+                //Console.WriteLine(result+ "在第" +counter);
+            }
+            conn.Close();
+
+            //*************************第一次筛选，范围选择*************************
+
+            double Verify_T_Upper = target_Scood_T + (180 / searchVar);
+            double Verify_T_Lower = target_Scood_T - (180 / searchVar);
+            double Verify_P_Upper = target_Scood_P + (180 / searchVar);
+            double Verify_P_Lower = target_Scood_P - (180 / searchVar);
+            FirstList.Remove(FirstResult);
+
+            Console.WriteLine("SecondaryCal总共找到了" + FirstList.Count);
+            if (FirstList.Count == 0)
+            {
+                searchPoint_Scood_R=searchPoint_Scood_R + anaconda;
+                goto Start;
+            }
+            else
+            {
+                Console.WriteLine("确认发现Secondary");
+                if (FirstList.Count == 1) //当只有一个星系的时候，偏向于继续使用加速
+                {
+                    Console.WriteLine("Secondary本次只找到了一个选项，正在进行最终可靠性测试");
+                    Console.WriteLine("Secondary导航参考点:" + searchPoint_X + " AND " + searchPoint_Y + " AND " + searchPoint_Z);
+
+                    conn.Open();
+                    string sqlSearch;
+                    double Neutron_X;
+                    double Neutron_Y;
+                    double Neutron_Z;
+                    double NeutronP;
+                    double NeutronT;
+                    sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                    Console.WriteLine(FirstList[0].ToString());
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Neutron_X = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Neutron_Y = (double)cmd.ExecuteScalar();
+                    sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
+                    cmd = new MySqlCommand(sqlSearch, conn);
+                    Neutron_Z = (double)cmd.ExecuteScalar();
+                    conn.Close();
+                    NeutronP = coordConvertToP(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                    NeutronT = coordConvertToT(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                    if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+                    {
+                        FinalOutput.Add(FirstList[0].ToString());
+                        Console.WriteLine("Secondary校验通过");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Secondary校验不通过，放弃这个点搜索");
+                    }
+                }
+                else //多结果筛选，离中心线（球坐标系T P 表达）越近，越容易被筛选 13.05.2017
+                {
+                    Console.WriteLine("Secondary本次发现多个选项，正在进行筛选");
+                    string FromList;
+                    string FromSecondList;
+                    for (int counter = 0; counter < FirstList.Count; counter++)
+                    {
+                        FromList = FirstList[counter].ToString();
+                        Console.WriteLine("Secondary正在检测" + FromList + "是否最佳");
+                        string sqlSearch;
+                        double Neutron_X;
+                        double Neutron_Y;
+                        double Neutron_Z;
+                        double NeutronP;
+                        double NeutronT;
+                        conn.Open();
+                        sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromList + "%'";
+                        Console.WriteLine(FromList);
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_X = (double)cmd.ExecuteScalar();
+                        sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromList + "%'";
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_Y = (double)cmd.ExecuteScalar();
+                        sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromList + "%'";
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_Z = (double)cmd.ExecuteScalar();
+                        conn.Close();
+                        NeutronP = coordConvertToP(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                        NeutronT = coordConvertToT(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                        if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+                        {
+                            SecondList.Add(FromList);
+                            Console.WriteLine("Secondary***第一校验通过***");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Secondary校验不通过，放弃对" + FromList + "的选择");
+                        }
+                    }
+
+                    double final_pDiff = 0;
+                    double final_tDiff = 0;
+                    string final_Name = "";
+
+
+                    for (int counter = 0; counter < SecondList.Count; counter++)
+                    {
+                        FromSecondList = FirstList[counter].ToString();
+                        string sqlSearch;
+                        double Neutron_X;
+                        double Neutron_Y;
+                        double Neutron_Z;
+                        double pDiff;
+                        double tDiff;
+                        double NeutronP;
+                        double NeutronT;
+                        conn.Open();
+                        sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                        Console.WriteLine(FromSecondList);
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_X = (double)cmd.ExecuteScalar();
+                        sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_Y = (double)cmd.ExecuteScalar();
+                        sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromSecondList + "%'";
+                        cmd = new MySqlCommand(sqlSearch, conn);
+                        Neutron_Z = (double)cmd.ExecuteScalar();
+                        conn.Close();
+                        NeutronP = coordConvertToP(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                        NeutronT = coordConvertToT(Neutron_X - playerX, Neutron_Y - playerY, Neutron_Z - playerZ);
+                        pDiff = Math.Abs(Math.Abs(NeutronP) - Math.Abs(target_Scood_P));
+                        tDiff = Math.Abs(Math.Abs(NeutronT) - Math.Abs(target_Scood_T));
+                        if (counter == 0)
+                        {
+                            final_pDiff = pDiff;
+                            final_tDiff = tDiff;
+                            final_Name = FromSecondList;
+                            Console.WriteLine("Secondary第一次写入，不对比");
+                        }
+                        else
+                        {
+                            if (pDiff < final_pDiff && tDiff < final_tDiff)
+                            {
+                                final_tDiff = pDiff;
+                                final_tDiff = tDiff;
+                                final_Name = FromSecondList;
+                            }
+                            else
+                            {
+                                Console.WriteLine(FromSecondList + "Secondary不是最优选项");
+                            }
+                        }
+                        Console.WriteLine("SecondaryTEST" + final_Name);
+                        FirstResult = final_Name;
+                    }
+                    Console.WriteLine("SecondaryTEST" + final_Name);
+                    FirstResult = final_Name;
+                    FinalOutput.Add(final_Name);
+                }
+            }
+
+            Console.WriteLine("是否继续？");
+           // bool Continue = Navigation.Continue(target.name, FinalOutput[FinalOutput.Count - 1].ToString(), anaconda);
+           // if (Continue == true)
+           // {
+           //     FirstResult = FinalOutput[FinalOutput.Count - 1].ToString();
+           //     goto Start;
+            //}
+            //else
+            //{
+             //   Console.WriteLine("一共找到了" + FinalOutput.Count);
+            //}
 
         }
 
-        //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
+        public static void SecondaryCalculationType2(string FirstResult)
+        {
+            Console.WriteLine("输入:" + FirstResult);
+            ArrayList FinalOutput = new ArrayList();
+            FinalOutput.Add(FirstResult);
+            string sql;
+            string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
+            MySqlConnection conn = new MySqlConnection(ConnectionString);
+            double X;
+            double Y;
+            double Z;
 
+            conn.Open();
+
+            sql = "SELECT X FROM db WHERE Name Like '%" + FirstResult + "%'";
+            Console.WriteLine(FirstResult);
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            X = (double)cmd.ExecuteScalar();
+            sql = "SELECT Y FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            Y = (double)cmd.ExecuteScalar();
+            sql = "SELECT Z FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            Z = (double)cmd.ExecuteScalar();
+
+            conn.Close();
+
+            string returnResultFromSearch = Navigation.SearchSystem("");
+            Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
+            string jsonReturn = Convert.ToString(target.coords);
+            Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
+            //Console.WriteLine("目标" + target.name + "X坐标为" + target_cood.x + "Y坐标为" + target_cood.y + "Z坐标为" + target_cood.z);
+
+            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
+            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
+            double searchVar = 0.5; //搜索范围变量 从1-0.2 
+
+            target_cood.x = target_cood.x - X;
+            target_cood.y = target_cood.y - Y;
+            target_cood.z = target_cood.z - Z; //更新目标绝对坐标系至相对坐标系 （相对当前中子星）
+
+            double target_Scood_R = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
+
+            Console.WriteLine("当前中子星名字是" + FirstResult + ",距离目的地还有" + target_Scood_R + "LY");
+
+            
+        }
+
+        //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
         public static double coordConvertToR(double X, double Y, double Z)
         {
             double r = System.Math.Sqrt(X * X + Y * Y + Z * Z);
@@ -388,24 +966,25 @@ namespace EDNavgation
         public static double ScoordConvertToX(double R, double T, double P)
         {
             double x = R * Math.Sin(T) * Math.Cos(P);
-            Console.WriteLine(x);
+            //Console.WriteLine(x);
             return x;
         }
 
         public static double ScoordConvertToY(double R, double T, double P)
         {
             double y = R * Math.Sin(T) * Math.Sin(P);
-            Console.WriteLine(y);
+            //Console.WriteLine(y);
             return y;
         }
 
         public static double ScoordConvertToZ(double R, double T, double P)
         {
             double z = R * Math.Cos(T);
-            Console.WriteLine(z);
+            //Console.WriteLine(z);
             return z;
         }
     }
+
     class Debug
     {
         public static void Module()

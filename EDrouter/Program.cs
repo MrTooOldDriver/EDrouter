@@ -31,6 +31,7 @@ namespace EDNavgation
             //Navigation.SecondaryCalculation(firstResultTest); 第一套算法
             Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
 
+            Console.WriteLine("程序完成");
             Console.ReadKey();
             //De-Comment to Enable Debug Modules
             Debug.Module();
@@ -899,22 +900,54 @@ namespace EDNavgation
             string sql;
             string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
             MySqlConnection conn = new MySqlConnection(ConnectionString);
-            double X;
-            double Y;
-            double Z;
+            double NowNeutron_X;
+            double NowNeutron_Y;
+            double NowNeutron_Z;
+
+            double Player_X = 46.375;
+            double Player_Y = -448.6875;
+            double Player_Z = -127.125;
+
+            double Target_X;
+            double Target_Y;
+            double Target_Z;
+
+            double TargetReferenceToNowNeutronCoodr_X;
+            double TargetReferenceToNowNeutronCoodr_Y;
+            double TargetReferenceToNowNeutronCoodr_Z;
+
+            double TargetReferenceToNowNeutronSCoodr_R;
+            double TargetReferenceToNowNeutronSCoodr_T;
+            double TargetReferenceToNowNeutronSCoodr_P;
+
+            double TargetReferenceToPlayerCoodr_X;
+            double TargetReferenceToPlayerCoodr_Y;
+            double TargetReferenceToPlayerCoodr_Z;
+
+            double TargetReferenceToPlayerSCoodr_R;
+            double TargetReferenceToPlayerSCoodr_T;
+            double TargetReferenceToPlayerSCoodr_P;
+
+            double NowNeutronReferenceToPlayer_X;
+            double NowNeutronReferenceToPlayer_Y;
+            double NowNeutronReferenceToPlayer_Z;
+
+            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
+            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
+            double searchVar = 0.5; //搜索范围变量 从1-0.2 
 
             conn.Open();
 
             sql = "SELECT X FROM db WHERE Name Like '%" + FirstResult + "%'";
             Console.WriteLine(FirstResult);
             MySqlCommand cmd = new MySqlCommand(sql, conn);
-            X = (double)cmd.ExecuteScalar();
+            NowNeutron_X = (double)cmd.ExecuteScalar();
             sql = "SELECT Y FROM db WHERE Name Like '%" + FirstResult + "%'";
             cmd = new MySqlCommand(sql, conn);
-            Y = (double)cmd.ExecuteScalar();
+            NowNeutron_Y = (double)cmd.ExecuteScalar();
             sql = "SELECT Z FROM db WHERE Name Like '%" + FirstResult + "%'";
             cmd = new MySqlCommand(sql, conn);
-            Z = (double)cmd.ExecuteScalar();
+            NowNeutron_Z = (double)cmd.ExecuteScalar();
 
             conn.Close();
 
@@ -922,23 +955,214 @@ namespace EDNavgation
             Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
             string jsonReturn = Convert.ToString(target.coords);
             Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
-            //Console.WriteLine("目标" + target.name + "X坐标为" + target_cood.x + "Y坐标为" + target_cood.y + "Z坐标为" + target_cood.z);
 
-            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
-            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
-            double searchVar = 0.5; //搜索范围变量 从1-0.2 
+            Target_X = target_cood.x;
+            Target_Y = target_cood.y;
+            Target_Z = target_cood.z;
 
-            target_cood.x = target_cood.x - X;
-            target_cood.y = target_cood.y - Y;
-            target_cood.z = target_cood.z - Z; //更新目标绝对坐标系至相对坐标系 （相对当前中子星）
+            TargetReferenceToNowNeutronCoodr_X = Target_X - NowNeutron_X;
+            TargetReferenceToNowNeutronCoodr_Y = Target_Y - NowNeutron_Y;
+            TargetReferenceToNowNeutronCoodr_Z = Target_Z - NowNeutron_Z;
 
-            double target_Scood_R = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
-            double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
-            double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
+            TargetReferenceToPlayerCoodr_X = Target_X - Player_X;
+            TargetReferenceToPlayerCoodr_Y = Target_Y - Player_Y;
+            TargetReferenceToPlayerCoodr_Z = Target_Z - Player_Z;
 
-            Console.WriteLine("当前中子星名字是" + FirstResult + ",距离目的地还有" + target_Scood_R + "LY");
+            TargetReferenceToNowNeutronSCoodr_R = coordConvertToR(TargetReferenceToNowNeutronCoodr_X, TargetReferenceToNowNeutronCoodr_Y, TargetReferenceToNowNeutronCoodr_Z);
+            TargetReferenceToNowNeutronSCoodr_T = coordConvertToT(TargetReferenceToNowNeutronCoodr_X, TargetReferenceToNowNeutronCoodr_Y, TargetReferenceToNowNeutronCoodr_Z);
+            TargetReferenceToNowNeutronSCoodr_P = coordConvertToP(TargetReferenceToNowNeutronCoodr_X, TargetReferenceToNowNeutronCoodr_Y, TargetReferenceToNowNeutronCoodr_Z);
 
-            
+            TargetReferenceToPlayerSCoodr_R = coordConvertToR(TargetReferenceToPlayerCoodr_X, TargetReferenceToPlayerCoodr_Y, TargetReferenceToPlayerCoodr_Z);
+            TargetReferenceToPlayerSCoodr_T = coordConvertToT(TargetReferenceToPlayerCoodr_X, TargetReferenceToPlayerCoodr_Y, TargetReferenceToPlayerCoodr_Z);
+            TargetReferenceToPlayerSCoodr_P = coordConvertToP(TargetReferenceToPlayerCoodr_X, TargetReferenceToPlayerCoodr_Y, TargetReferenceToPlayerCoodr_Z);
+
+            NowNeutronReferenceToPlayer_X = NowNeutron_X - Player_X;
+            NowNeutronReferenceToPlayer_Y = NowNeutron_Y - Player_Y;
+            NowNeutronReferenceToPlayer_Z = NowNeutron_Z - Player_Z;
+
+            Console.WriteLine("当前中子星名字是" + FirstResult + ",距离目的地还有" + TargetReferenceToNowNeutronSCoodr_R + "LY");
+            //Console.ReadKey();
+
+            double VarTestInt = 12;
+            double searchBetween_X_Upper = NowNeutron_X + (anaconda * VarTestInt);
+            double searchBetween_X_Lower = NowNeutron_X - (anaconda * VarTestInt);
+            double searchBetween_Y_Upper = NowNeutron_Y + (anaconda * VarTestInt);
+            double searchBetween_Y_Lower = NowNeutron_Y - (anaconda * VarTestInt);
+            double searchBetween_Z_Upper = NowNeutron_Z + (anaconda * VarTestInt);
+            double searchBetween_Z_Lower = NowNeutron_Z - (anaconda * VarTestInt);
+
+            sql = "SELECT * FROM db WHERE X BETWEEN " + searchBetween_X_Lower + " AND " + searchBetween_X_Upper + " AND Y BETWEEN " + searchBetween_Y_Lower + " AND " + searchBetween_Y_Upper + " AND Z BETWEEN " + searchBetween_Z_Lower + " AND " + searchBetween_Z_Upper;
+            cmd = new MySqlCommand(sql, conn);
+
+            conn.Open();
+
+            ArrayList FirstSelectList_Name = new ArrayList();
+            ArrayList FirstSelectList_X = new ArrayList();
+            ArrayList FirstSelectList_Y = new ArrayList();
+            ArrayList FirstSelectList_Z = new ArrayList();
+
+            MySqlDataReader Reader = cmd.ExecuteReader();
+            while (Reader.Read())
+            {
+                //Console.WriteLine("已经发现Secondary");
+                double FromPlayerToTryNeutron = coordConvertToR(
+                    Convert.ToDouble(Reader.GetString("X"))-Player_X,
+                    Convert.ToDouble(Reader.GetString("Y"))-Player_Y,
+                    Convert.ToDouble(Reader.GetString("Z"))-Player_Z);
+
+                double FromPlayerToNowNeutron = coordConvertToR(
+                    NowNeutron_X - Player_X,
+                    NowNeutron_Y - Player_Y, 
+                    NowNeutron_Z - Player_Z);
+
+                //Insert New Selection Method Double verify*******************
+                double VerifyR = coordConvertToR(
+                    Convert.ToDouble(Reader.GetString("X")) - Player_X,
+                    Convert.ToDouble(Reader.GetString("Y")) - Player_Y,
+                    Convert.ToDouble(Reader.GetString("Z")) - Player_Z);
+                //RefCOODR!!!
+                double VerifyPoint_X = ScoordConvertToX(VerifyR, TargetReferenceToPlayerSCoodr_T, TargetReferenceToPlayerSCoodr_P);
+                double VerifyPoint_Y = ScoordConvertToY(VerifyR, TargetReferenceToPlayerSCoodr_T, TargetReferenceToPlayerSCoodr_P);
+                double VerifyPoint_Z = ScoordConvertToZ(VerifyR, TargetReferenceToPlayerSCoodr_T, TargetReferenceToPlayerSCoodr_P);
+
+                double TryNeutronReferenceToVerifyPoint_X = Convert.ToDouble(Reader.GetString("X")) - VerifyPoint_X;
+                double TryNeutronReferenceToVerifyPoint_Y = Convert.ToDouble(Reader.GetString("Y")) - VerifyPoint_Y;
+                double TryNeutronReferenceToVerifyPoint_Z = Convert.ToDouble(Reader.GetString("Z")) - VerifyPoint_Z;
+
+                double DistanceBetweenVerifyPointAndTryNeutron = coordConvertToR(TryNeutronReferenceToVerifyPoint_X, TryNeutronReferenceToVerifyPoint_Y, TryNeutronReferenceToVerifyPoint_Z);
+
+                //************************************************************
+                if (FromPlayerToNowNeutron < FromPlayerToTryNeutron && DistanceBetweenVerifyPointAndTryNeutron<100)
+                {
+                    //cancel = true;
+                    Console.WriteLine("星系" + Reader.GetString("Name") + "在当前中子星前，且在允许误差范围内,加入第一选择序列");
+
+                    FirstSelectList_Name.Add(Reader.GetString("Name"));
+                    FirstSelectList_X.Add(Reader.GetString("X"));
+                    FirstSelectList_Y.Add(Reader.GetString("Y"));
+                    FirstSelectList_Z.Add(Reader.GetString("Z"));
+                }
+                else
+                {
+                    Console.WriteLine("星系" + Reader.GetString("Name") + "在当前中子星后或不在允许误差范围内，不加入第一选择序列");
+                }
+
+            }
+
+            conn.Close();
+            Console.WriteLine("第一序列检测完成");
+
+            try
+            {
+                int RemoveIndex = FirstSelectList_Name.IndexOf(FirstResult);
+                Console.WriteLine("星系" + FirstResult + ",Index=" + RemoveIndex);
+
+                FirstSelectList_Name.RemoveAt(RemoveIndex);
+                FirstSelectList_X.RemoveAt(RemoveIndex);
+                FirstSelectList_Y.RemoveAt(RemoveIndex);
+                FirstSelectList_Z.RemoveAt(RemoveIndex);
+            }
+            catch
+            {
+            }
+
+            if (FirstSelectList_Name.Count == 0)
+            {
+                Console.WriteLine("本次搜索没有输出结果");
+                Console.ReadKey();
+            }
+
+            string FromFirstSelectList_Name;
+            double FromFirstSelectList_X;
+            double FromFirstSelectList_Y;
+            double FromFirstSelectList_Z;
+            double FromFirstSelectList_Rcoord_X;
+            double FromFirstSelectList_Rcoord_Y;
+            double FromFirstSelectList_Rcoord_Z;
+            double FromNeutronToNext;
+
+            ArrayList PrimarySelectList_Name = new ArrayList();
+            ArrayList PrimarySelectList_X = new ArrayList();
+            ArrayList PrimarySelectList_Y = new ArrayList();
+            ArrayList PrimarySelectList_Z = new ArrayList();
+
+            for (int counter = 0; counter < FirstSelectList_Name.Count; counter++)
+            {
+                FromFirstSelectList_Name = FirstSelectList_Name[counter].ToString();
+                int IndexOfObject = FirstSelectList_Name.IndexOf(FromFirstSelectList_Name);
+                FromFirstSelectList_X = Convert.ToDouble(FirstSelectList_X[IndexOfObject].ToString());
+                FromFirstSelectList_Y = Convert.ToDouble(FirstSelectList_Y[IndexOfObject].ToString());
+                FromFirstSelectList_Z = Convert.ToDouble(FirstSelectList_Z[IndexOfObject].ToString());
+                Console.WriteLine("当前星系" + FromFirstSelectList_Name + ",X=" + FromFirstSelectList_X + ",Y=" + FromFirstSelectList_Y + ",Z=" + FromFirstSelectList_Z);
+
+                FromFirstSelectList_Rcoord_X = FromFirstSelectList_X - NowNeutron_X ;
+                FromFirstSelectList_Rcoord_Y = FromFirstSelectList_Y - NowNeutron_Y ;
+                FromFirstSelectList_Rcoord_Z = FromFirstSelectList_Z - NowNeutron_Z ;
+
+                FromNeutronToNext = coordConvertToR(FromFirstSelectList_Rcoord_X, FromFirstSelectList_Rcoord_Y, FromFirstSelectList_Rcoord_Z);
+                if (FromNeutronToNext <= anaconda_boost) //如果在SuperCharge范围内的话，加入到Primary list,同时从FirstSelect中删除
+                {
+                    PrimarySelectList_Name.Add(FromFirstSelectList_Name);
+                    PrimarySelectList_X.Add(FromFirstSelectList_X);
+                    PrimarySelectList_Y.Add(FromFirstSelectList_Y);
+                    PrimarySelectList_Z.Add(FromFirstSelectList_Z);
+
+                    int RemoveIndexInSelect = FirstSelectList_Name.IndexOf(FromFirstSelectList_Name);
+
+                    FirstSelectList_Name.RemoveAt(RemoveIndexInSelect);
+                    FirstSelectList_X.RemoveAt(RemoveIndexInSelect);
+                    FirstSelectList_Y.RemoveAt(RemoveIndexInSelect);
+                    FirstSelectList_Z.RemoveAt(RemoveIndexInSelect);
+
+                    Console.WriteLine("当前星系" + FirstSelectList_Name + "In SuperCharge Range,Remove from FirstSelectList, Add to PrimaryList.");
+                }
+                else
+                {
+                    Console.WriteLine("当前星系" + FirstSelectList_Name + "NOT In SuperCharge Range.");
+                }
+            }
+            Console.WriteLine("Object In PrimaryList=" + PrimarySelectList_Name.Count + ".Object In FirstList(SecondaryList)=" + FirstSelectList_Name.Count);
+
+            string FromPrimarySelectList_Name;
+            double FromPrimarySelectList_X;
+            double FromPrimarySelectList_Y;
+            double FromPrimarySelectList_Z;
+            double FromPLayerToNext;
+            double ActuallyPush=0;
+
+            for (int counter = 0; counter < PrimarySelectList_Name.Count; counter++)
+            {
+                FromPrimarySelectList_Name = PrimarySelectList_Name[counter].ToString();
+                int IndexOfObject = FromPrimarySelectList_Name.IndexOf(FromPrimarySelectList_Name);
+
+                FromPrimarySelectList_X = Convert.ToDouble(PrimarySelectList_X[IndexOfObject].ToString());
+                FromPrimarySelectList_Y = Convert.ToDouble(PrimarySelectList_Y[IndexOfObject].ToString());
+                FromPrimarySelectList_Z = Convert.ToDouble(PrimarySelectList_Z[IndexOfObject].ToString());
+
+                Console.WriteLine(FromPrimarySelectList_Name + "DEBUG" + FromPrimarySelectList_X + "," + FromPrimarySelectList_Y + "," + FromPrimarySelectList_Z);
+
+                FromPLayerToNext = coordConvertToR(FromPrimarySelectList_X -Player_X, FromPrimarySelectList_Y -Player_Y, FromPrimarySelectList_Z -Player_Z);
+                if (counter == 0)
+                {
+                    ActuallyPush = FromPLayerToNext;
+                    Console.WriteLine("PrimarySelect Start");
+                }
+                else
+                {
+                    if (ActuallyPush < FromPLayerToNext && ActuallyPush != 0)
+                    {
+                        ActuallyPush = FromPLayerToNext;
+                        Console.WriteLine("PrimarySelect Update");
+                    }
+                    else
+                    {
+                        Console.WriteLine("PrimarySelect does't Update");
+                    }
+                }
+
+            }
+
+            //IF Primary list nothing, then use Secondary list
         }
 
         //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;

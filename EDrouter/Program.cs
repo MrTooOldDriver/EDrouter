@@ -359,6 +359,7 @@ namespace EDNavgation
             //对策 改float类
 
             //搜索校验值 最大（var=1）为左右上下180度大扇面 最小var=0.2 左右上下36度小扇面
+            //mdzz 你 +-180不就是一个180*2 360的扇面了么，这不等于没有么？？？？
             double Verify_T_Upper = target_Scood_T + (180 / searchVar);
             double Verify_T_Lower = target_Scood_T - (180 / searchVar);
             double Verify_P_Upper = target_Scood_P + (180 / searchVar);
@@ -932,6 +933,10 @@ namespace EDNavgation
             double NowNeutronReferenceToPlayer_Y;
             double NowNeutronReferenceToPlayer_Z;
 
+            double NowNeutronReferenceToPlayerSCoodr_R;
+            double NowNeutronReferenceToPlayerSCoodr_T;
+            double NowNeutronReferenceToPlayerSCoodr_P;
+
             double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
             double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
             double searchVar = 0.5; //搜索范围变量 从1-0.2 
@@ -950,6 +955,8 @@ namespace EDNavgation
             NowNeutron_Z = (double)cmd.ExecuteScalar();
 
             conn.Close();
+
+            Start:
 
             string returnResultFromSearch = Navigation.SearchSystem("");
             Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
@@ -980,10 +987,14 @@ namespace EDNavgation
             NowNeutronReferenceToPlayer_Y = NowNeutron_Y - Player_Y;
             NowNeutronReferenceToPlayer_Z = NowNeutron_Z - Player_Z;
 
+            NowNeutronReferenceToPlayerSCoodr_R = coordConvertToR(NowNeutronReferenceToPlayer_X, NowNeutronReferenceToPlayer_Y, NowNeutronReferenceToPlayer_Z);
+            NowNeutronReferenceToPlayerSCoodr_T = coordConvertToT(NowNeutronReferenceToPlayer_X, NowNeutronReferenceToPlayer_Y, NowNeutronReferenceToPlayer_Z);
+            NowNeutronReferenceToPlayerSCoodr_P = coordConvertToP(NowNeutronReferenceToPlayer_X, NowNeutronReferenceToPlayer_Y, NowNeutronReferenceToPlayer_Z);
+
             Console.WriteLine("当前中子星名字是" + FirstResult + ",距离目的地还有" + TargetReferenceToNowNeutronSCoodr_R + "LY");
             //Console.ReadKey();
 
-            double VarTestInt = 12;
+            double VarTestInt = 8;
             double searchBetween_X_Upper = NowNeutron_X + (anaconda * VarTestInt);
             double searchBetween_X_Lower = NowNeutron_X - (anaconda * VarTestInt);
             double searchBetween_Y_Upper = NowNeutron_Y + (anaconda * VarTestInt);
@@ -1031,8 +1042,12 @@ namespace EDNavgation
 
                 double DistanceBetweenVerifyPointAndTryNeutron = coordConvertToR(TryNeutronReferenceToVerifyPoint_X, TryNeutronReferenceToVerifyPoint_Y, TryNeutronReferenceToVerifyPoint_Z);
 
+                //************************************************************Insert New New New Selection Method Double verify
+                //扇面搜索    
+
+
                 //************************************************************
-                if (FromPlayerToNowNeutron < FromPlayerToTryNeutron && DistanceBetweenVerifyPointAndTryNeutron<100)
+                if (FromPlayerToNowNeutron < FromPlayerToTryNeutron && DistanceBetweenVerifyPointAndTryNeutron<300)
                 {
                     //cancel = true;
                     Console.WriteLine("星系" + Reader.GetString("Name") + "在当前中子星前，且在允许误差范围内,加入第一选择序列");
@@ -1069,8 +1084,13 @@ namespace EDNavgation
             if (FirstSelectList_Name.Count == 0)
             {
                 Console.WriteLine("本次搜索没有输出结果");
+                NowNeutron_X = ScoordConvertToX(NowNeutronReferenceToPlayerSCoodr_R + VarTestInt * 2 * anaconda, TargetReferenceToNowNeutronSCoodr_T, TargetReferenceToNowNeutronSCoodr_T);
+                NowNeutron_Y = ScoordConvertToY(NowNeutronReferenceToPlayerSCoodr_R + VarTestInt * 2 * anaconda, TargetReferenceToNowNeutronSCoodr_T, TargetReferenceToNowNeutronSCoodr_T);
+                NowNeutron_Z = ScoordConvertToZ(NowNeutronReferenceToPlayerSCoodr_R + VarTestInt * 2 * anaconda, TargetReferenceToNowNeutronSCoodr_T, TargetReferenceToNowNeutronSCoodr_T);
+                Console.WriteLine("递进搜索开始,从NowNeutron到Target的直线上增加" + NowNeutronReferenceToPlayerSCoodr_R + VarTestInt * 2 * anaconda + "LY,新的NowNeutron（NewSerachPoint）点为：X=" + NowNeutron_X + ",Y=" + NowNeutron_Y + ",Z=" + NowNeutron_Z);
                 Console.ReadKey();
-            }
+                goto Start;
+            }    //NEED DEBUG OR REWRITE
 
             string FromFirstSelectList_Name;
             double FromFirstSelectList_X;
@@ -1129,6 +1149,7 @@ namespace EDNavgation
             double FromPrimarySelectList_Z;
             double FromPLayerToNext;
             double ActuallyPush=0;
+            double Select;
 
             for (int counter = 0; counter < PrimarySelectList_Name.Count; counter++)
             {
@@ -1159,12 +1180,433 @@ namespace EDNavgation
                         Console.WriteLine("PrimarySelect does't Update");
                     }
                 }
-
             }
 
             //IF Primary list nothing, then use Secondary list
         }
 
+        public static void SecondaryCalculationType3(string FirstResult_FromFirstCalculation)
+        {
+            string FirstResult = FirstResult_FromFirstCalculation;
+
+            Start:
+
+            Console.WriteLine("输入:" + FirstResult);
+            ArrayList FinalOutput = new ArrayList();
+            FinalOutput.Add(FirstResult);
+            string sql;
+            string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
+            MySqlConnection conn = new MySqlConnection(ConnectionString);
+            double NowNeutron_X;        
+            double NowNeutron_Y;
+            double NowNeutron_Z;
+
+            double Player_X = 46.375;   //fehu coord
+            double Player_Y = -448.6875;
+            double Player_Z = -127.125;
+            double MyLovelyAnaconda = 50;
+
+            //******************Warning******************
+            //Manual control Target coord = Pyramio GO-K c24-8
+            double Target_X = 993.5;
+            double Target_Y = -374.8125;
+            double Target_Z = 6399.78125;
+            //******************Warning******************
+
+            conn.Open();
+
+            sql = "SELECT X FROM db WHERE Name Like '%" + FirstResult + "%'";
+            Console.WriteLine(FirstResult);
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            NowNeutron_X = (double)cmd.ExecuteScalar();
+            sql = "SELECT Y FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            NowNeutron_Y = (double)cmd.ExecuteScalar();
+            sql = "SELECT Z FROM db WHERE Name Like '%" + FirstResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            NowNeutron_Z = (double)cmd.ExecuteScalar();
+
+            Start2:
+
+            //scoord FromAtoB Bx-Ax
+            double FromNowNeutronToTarget_T = coordConvertToT(Target_X - NowNeutron_X, Target_Y - NowNeutron_Y, Target_Y - NowNeutron_Z);
+            double FromNowNeutronToTarget_P = coordConvertToP(Target_X - NowNeutron_X, Target_Y - NowNeutron_Y, Target_Y - NowNeutron_Z);
+            double FromNowNeutronToTarget_R = coordConvertToR(Target_X - NowNeutron_X, Target_Y - NowNeutron_Y, Target_Y - NowNeutron_Z);
+
+            double SearchZone_Upper_X = NowNeutron_X + 250;
+            double SearchZone_Lower_X = NowNeutron_X - 250;
+            double SearchZone_Upper_Y = NowNeutron_Y + 250;
+            double SearchZone_Lower_Y = NowNeutron_Y - 250;
+            double SearchZone_Upper_Z = NowNeutron_Z + 250;
+            double SearchZone_Lower_Z = NowNeutron_Z - 250;
+
+            sql = "SELECT * FROM db WHERE X BETWEEN " + SearchZone_Upper_X + " AND " + SearchZone_Lower_X + " AND Y BETWEEN " + SearchZone_Upper_Y + " AND " + SearchZone_Lower_Y + " AND Z BETWEEN " + SearchZone_Upper_Z + " AND " + SearchZone_Lower_Z;
+            cmd = new MySqlCommand(sql, conn);
+
+            ArrayList PrimaryList_Name = new ArrayList();
+            ArrayList PrimaryList_X = new ArrayList();
+            ArrayList PrimaryList_Y = new ArrayList();
+            ArrayList PrimaryList_Z = new ArrayList();
+
+            ArrayList SecondaryList_Name = new ArrayList();
+            ArrayList SecondaryList_X = new ArrayList();
+            ArrayList SecondaryList_Y = new ArrayList();
+            ArrayList SecondaryList_Z = new ArrayList();
+
+            MySqlDataReader Reader = cmd.ExecuteReader();
+            while (Reader.Read())
+            {
+                if (Reader.HasRows)
+                {
+                    double PossibleStar_X = Convert.ToDouble(Reader.GetString("X"));
+                    double PossibleStar_Y = Convert.ToDouble(Reader.GetString("Y"));
+                    double PossibleStar_Z = Convert.ToDouble(Reader.GetString("Z"));
+                    string PossibleStar_Name = Reader.GetString("Name");
+                    double FromNowNeutronToPossibleStar_T = coordConvertToT(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
+                    double FromNowNeutronToPossibleStar_P = coordConvertToP(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
+                    if (FromNowNeutronToTarget_P - 90 < FromNowNeutronToPossibleStar_P && FromNowNeutronToPossibleStar_P < FromNowNeutronToTarget_P + 90
+                        && FromNowNeutronToTarget_T - 90 < FromNowNeutronToPossibleStar_T && FromNowNeutronToPossibleStar_T < FromNowNeutronToTarget_T + 90)
+                    {
+                        double DistanceToNext = coordConvertToR(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
+                        if (DistanceToNext < MyLovelyAnaconda * 4)
+                        {
+                            PrimaryList_Name.Add(PossibleStar_Name);
+                            PrimaryList_X.Add(PossibleStar_X);
+                            PrimaryList_Y.Add(PossibleStar_Y);
+                            PrimaryList_Z.Add(PossibleStar_Z);
+                        }
+                        else
+                        {
+                            SecondaryList_Name.Add(PossibleStar_Name);
+                            SecondaryList_X.Add(PossibleStar_X);
+                            SecondaryList_Y.Add(PossibleStar_Y);
+                            SecondaryList_Z.Add(PossibleStar_Z);
+                        }
+                    }
+                    else
+                    {
+                        //Nothing to do, give up this possible
+                    }
+
+                }
+                else
+                {
+                    goto NoResult;
+                }
+            }
+
+            //double FromPlayerToTarget_T = coordConvertToT(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+            //double FromPlayerToTarget_P = coordConvertToP(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+            double FromPlayerToNowNeutron_R = coordConvertToR(NowNeutron_X - Player_X, NowNeutron_Y - Player_Y, NowNeutron_Z - Player_Z);
+
+            if (PrimaryList_Name.Count > 0)
+            {
+                double Try_Push=0;
+                string Try_Name;
+
+                for (int counter = 0; counter < PrimaryList_Name.Count; counter++)
+                {
+                    double X = Convert.ToDouble(PrimaryList_X[counter].ToString());
+                    double Y = Convert.ToDouble(PrimaryList_Y[counter].ToString());                                                                                        
+                    double Z = Convert.ToDouble(PrimaryList_Z[counter].ToString());
+                    string Name = PrimaryList_Name[counter].ToString();
+                    double FromPlayerToPossibleNeutron = coordConvertToR(X - Player_X, Y - Player_Y, Z - Player_Z);
+                    double ActualPush = FromPlayerToPossibleNeutron - FromPlayerToNowNeutron_R;
+                    if (counter == 0)
+                    {
+                        Try_Push = ActualPush;
+                        Try_Name = Name;
+                    }
+                    else
+                    {
+                        if (ActualPush > Try_Push)
+                        {
+                            Try_Push = ActualPush;
+                            Try_Name = Name;
+                        }
+                        else
+                        {
+                            //pass this possible
+                        }
+                    }
+                }
+
+                if (Try_Push > MyLovelyAnaconda * 2)
+                {
+                    //distance to target check
+                }
+                else
+                {
+                    //Doesnt get Result from Primart, goto secondary
+                }
+            }
+
+            ArrayList Four = new ArrayList();
+            ArrayList Five = new ArrayList();
+            ArrayList Six = new ArrayList();
+            ArrayList Seven = new ArrayList();
+            ArrayList Eight = new ArrayList();
+
+            ArrayList FinalList = new ArrayList();
+
+            if (SecondaryList_Name.Count > 0)
+            {
+
+                for (int counter = 0; counter < SecondaryList_Name.Count; counter++)
+                {
+                    double X = Convert.ToDouble(SecondaryList_X[counter].ToString());
+                    double Y = Convert.ToDouble(SecondaryList_Y[counter].ToString());
+                    double Z = Convert.ToDouble(SecondaryList_Z[counter].ToString());
+                    string Name = SecondaryList_Name[counter].ToString();
+                    double FromPlayerToPossibleNeutron = coordConvertToR(X - Player_X, Y - Player_Y, Z - Player_Z);
+                    double ActualPush = FromPlayerToPossibleNeutron - FromPlayerToNowNeutron_R;
+
+                    double FromNowNeutronToPossible_T = coordConvertToT(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                    double FromNowNeutronToPossible_P = coordConvertToP(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+
+                    double FromNowNeutronToPossible_R = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+
+                    if (FromNowNeutronToTarget_P - 45 < FromNowNeutronToPossible_P && 
+                        FromNowNeutronToPossible_P < FromNowNeutronToTarget_P + 45 && 
+                        FromNowNeutronToTarget_T - 45 < FromNowNeutronToPossible_T && 
+                        FromNowNeutronToPossible_T < FromNowNeutronToTarget_T + 45) 
+                    {
+                        double JumpNeeded = System.Math.Truncate(System.Math.Abs(FromNowNeutronToPossible_R / (MyLovelyAnaconda)));
+                        if (JumpNeeded == 4)
+                        {
+                            Four.Add(counter);
+                        }
+                        if (JumpNeeded == 5)
+                        {
+                            Five.Add(counter);
+                        }
+                        if (JumpNeeded == 6)
+                        {
+                            Six.Add(counter);
+                        }
+                        if (JumpNeeded == 7)
+                        {
+                            Seven.Add(counter);
+                        }
+                        if (JumpNeeded == 8)
+                        {
+                            Eight.Add(counter);
+                        }
+                    }
+                }
+
+                string ThisTimeResult="";
+
+                if (Four.Count > 0)
+                {
+                    string Final_Name;
+                    for (int counter = 0; counter < Four.Count; counter++)
+                    {
+                        int Index = Convert.ToInt16 (Four[counter].ToString());
+                        double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
+                        double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
+                        double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
+                        string Name = SecondaryList_Name[Index].ToString();
+
+                        double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                        double Final_Distance=1000;
+
+                        if (counter == 0)
+                        {
+                            Final_Name = Name;
+                            Final_Distance = Distance;
+                        }
+                        else
+                        {
+                            if (Final_Distance > Distance)
+                            {
+                                Final_Name = Name;
+                                Final_Distance = Distance;
+                            }
+                        }
+                    }
+                    Final_Name = ThisTimeResult;
+                    goto FinalResultCheck;
+                }
+
+                if (Five.Count > 0)
+                {
+                    string Final_Name;
+                    for (int counter = 0; counter < Five.Count; counter++)
+                    {
+                        int Index = Convert.ToInt16(Five[counter].ToString());
+                        double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
+                        double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
+                        double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
+                        string Name = SecondaryList_Name[Index].ToString();
+
+                        double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                        double Final_Distance = 1000;
+
+                        if (counter == 0)
+                        {
+                            Final_Name = Name;
+                            Final_Distance = Distance;
+                        }
+                        else
+                        {
+                            if (Final_Distance > Distance)
+                            {
+                                Final_Name = Name;
+                                Final_Distance = Distance;
+                            }
+                        }
+                    }
+                    Final_Name = ThisTimeResult;
+                    goto FinalResultCheck;
+                }
+
+                if (Six.Count > 0)
+                {
+                    string Final_Name;
+                    for (int counter = 0; counter < Six.Count; counter++)
+                    {
+                        int Index = Convert.ToInt16(Six[counter].ToString());
+                        double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
+                        double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
+                        double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
+                        string Name = SecondaryList_Name[Index].ToString();
+
+                        double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                        double Final_Distance = 1000;
+
+                        if (counter == 0)
+                        {
+                            Final_Name = Name;
+                            Final_Distance = Distance;
+                        }
+                        else
+                        {
+                            if (Final_Distance > Distance)
+                            {
+                                Final_Name = Name;
+                                Final_Distance = Distance;
+                            }
+                        }
+                    }
+                    Final_Name = ThisTimeResult;
+                    goto FinalResultCheck;
+                }
+
+                if (Seven.Count > 0)
+                {
+                    string Final_Name;
+                    for (int counter = 0; counter < Seven.Count; counter++)
+                    {
+                        int Index = Convert.ToInt16(Seven[counter].ToString());
+                        double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
+                        double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
+                        double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
+                        string Name = SecondaryList_Name[Index].ToString();
+
+                        double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                        double Final_Distance = 1000;
+
+                        if (counter == 0)
+                        {
+                            Final_Name = Name;
+                            Final_Distance = Distance;
+                        }
+                        else
+                        {
+                            if (Final_Distance > Distance)
+                            {
+                                Final_Name = Name;
+                                Final_Distance = Distance;
+                            }
+                        }
+                    }
+                    Final_Name = ThisTimeResult;
+                    goto FinalResultCheck;
+                }
+
+                if (Eight.Count > 0)
+                {
+                    string Final_Name;
+                    for (int counter = 0; counter < Eight.Count; counter++)
+                    {
+                        int Index = Convert.ToInt16(Eight[counter].ToString());
+                        double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
+                        double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
+                        double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
+                        string Name = SecondaryList_Name[Index].ToString();
+
+                        double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
+                        double Final_Distance = 1000;
+
+                        if (counter == 0)
+                        {
+                            Final_Name = Name;
+                            Final_Distance = Distance;
+                        }
+                        else
+                        {
+                            if (Final_Distance > Distance)
+                            {
+                                Final_Name = Name;
+                                Final_Distance = Distance;
+                            }
+                        }
+                    }
+                    Final_Name = ThisTimeResult;
+                    goto FinalResultCheck;
+                }
+
+                FinalResultCheck:
+
+                sql = "SELECT X FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+                Console.WriteLine(FirstResult);
+                cmd = new MySqlCommand(sql, conn);
+                double FinalResult_X = (double)cmd.ExecuteScalar();
+                sql = "SELECT Y FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+                cmd = new MySqlCommand(sql, conn);
+                double FinalResult_Y = (double)cmd.ExecuteScalar();
+                sql = "SELECT Z FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+                cmd = new MySqlCommand(sql, conn);
+                double FinalResult_Z = (double)cmd.ExecuteScalar();
+
+                double FromPlayerToTarget_T = coordConvertToT(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+                double FromPlayerToTarget_P = coordConvertToP(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+
+                double FromPlayerToFinalResult_T = coordConvertToT(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
+                double FromPlayerToFinalResult_P = coordConvertToP(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
+
+                if (FromPlayerToTarget_P - 45 < FromPlayerToFinalResult_P &&
+                    FromPlayerToFinalResult_P < FromPlayerToTarget_P + 45 &&
+                    FromPlayerToTarget_T - 45 < FromPlayerToFinalResult_T &&
+                    FromPlayerToFinalResult_T < FromPlayerToTarget_T + 45)
+                {
+                    FinalList.Add(ThisTimeResult);
+                    FirstResult = ThisTimeResult;
+                    goto Start;
+                }
+                else
+                {
+                    Console.WriteLine("计算结束");
+                    //return FinalList;
+                    return;
+                }
+            }
+            else
+            {
+                goto NoResult;
+            }
+
+            NoResult:
+            FromNowNeutronToTarget_R = FromNowNeutronToTarget_R + 250;
+            double NewX = ScoordConvertToX(FromNowNeutronToTarget_R, FromNowNeutronToTarget_T, FromNowNeutronToTarget_P) +NowNeutron_X;
+            double NewY = ScoordConvertToY(FromNowNeutronToTarget_R, FromNowNeutronToTarget_T, FromNowNeutronToTarget_P) + NowNeutron_X;
+            double NewZ = ScoordConvertToZ(FromNowNeutronToTarget_R, FromNowNeutronToTarget_T, FromNowNeutronToTarget_P) + NowNeutron_X;
+            NowNeutron_X = NewX;
+            NowNeutron_Y = NewY;
+            NowNeutron_Z = NewZ;
+            goto Start2;
+        }
         //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
         public static double coordConvertToR(double X, double Y, double Z)
         {

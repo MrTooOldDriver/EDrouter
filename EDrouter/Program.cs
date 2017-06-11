@@ -29,7 +29,14 @@ namespace EDNavgation
             Console.WriteLine("首次搜索输出" + firstResultTest);
             
             //Navigation.SecondaryCalculation(firstResultTest); 第一套算法
-            Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
+            //Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
+
+            ArrayList Final = Navigation.SecondaryCalculationType3(firstResultTest);
+
+            for (int counter = 0; counter < Final.Count; counter++)
+            {
+                Console.WriteLine("第" + counter + 1 + "个导航点是：" + Final[counter].ToString());
+            }
 
             Console.WriteLine("程序完成");
             Console.ReadKey();
@@ -1185,9 +1192,10 @@ namespace EDNavgation
             //IF Primary list nothing, then use Secondary list
         }
 
-        public static void SecondaryCalculationType3(string FirstResult_FromFirstCalculation)
+        public static ArrayList SecondaryCalculationType3(string FirstResult_FromFirstCalculation)
         {
             string FirstResult = FirstResult_FromFirstCalculation;
+            int Counter = 0;
 
             Start:
 
@@ -1197,6 +1205,7 @@ namespace EDNavgation
             string sql;
             string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
             MySqlConnection conn = new MySqlConnection(ConnectionString);
+
             double NowNeutron_X;        
             double NowNeutron_Y;
             double NowNeutron_Z;
@@ -1226,8 +1235,15 @@ namespace EDNavgation
             cmd = new MySqlCommand(sql, conn);
             NowNeutron_Z = (double)cmd.ExecuteScalar();
 
+            conn.Close();
+
             Start2:
 
+            Counter++;
+
+            Console.WriteLine("The" + Counter + "times calculation");
+
+            conn.Open();
             //scoord FromAtoB Bx-Ax
             double FromNowNeutronToTarget_T = coordConvertToT(Target_X - NowNeutron_X, Target_Y - NowNeutron_Y, Target_Y - NowNeutron_Z);
             double FromNowNeutronToTarget_P = coordConvertToP(Target_X - NowNeutron_X, Target_Y - NowNeutron_Y, Target_Y - NowNeutron_Z);
@@ -1240,7 +1256,7 @@ namespace EDNavgation
             double SearchZone_Upper_Z = NowNeutron_Z + 250;
             double SearchZone_Lower_Z = NowNeutron_Z - 250;
 
-            sql = "SELECT * FROM db WHERE X BETWEEN " + SearchZone_Upper_X + " AND " + SearchZone_Lower_X + " AND Y BETWEEN " + SearchZone_Upper_Y + " AND " + SearchZone_Lower_Y + " AND Z BETWEEN " + SearchZone_Upper_Z + " AND " + SearchZone_Lower_Z;
+            sql = "SELECT * FROM db WHERE X BETWEEN " + SearchZone_Lower_X + " AND " + SearchZone_Upper_X + " AND Y BETWEEN " + SearchZone_Lower_Y + " AND " + SearchZone_Upper_Y + " AND Z BETWEEN " + SearchZone_Lower_Z + " AND " + SearchZone_Upper_Z;
             cmd = new MySqlCommand(sql, conn);
 
             ArrayList PrimaryList_Name = new ArrayList();
@@ -1254,10 +1270,14 @@ namespace EDNavgation
             ArrayList SecondaryList_Z = new ArrayList();
 
             MySqlDataReader Reader = cmd.ExecuteReader();
+
+            Console.WriteLine("[" + Counter + "]" + "开始读取SQL搜索结果");
+
             while (Reader.Read())
             {
                 if (Reader.HasRows)
                 {
+                    Console.WriteLine("["+Counter+"]" +"有搜索结果");
                     double PossibleStar_X = Convert.ToDouble(Reader.GetString("X"));
                     double PossibleStar_Y = Convert.ToDouble(Reader.GetString("Y"));
                     double PossibleStar_Z = Convert.ToDouble(Reader.GetString("Z"));
@@ -1274,6 +1294,7 @@ namespace EDNavgation
                             PrimaryList_X.Add(PossibleStar_X);
                             PrimaryList_Y.Add(PossibleStar_Y);
                             PrimaryList_Z.Add(PossibleStar_Z);
+                            Console.WriteLine("[" + Counter + "]" + "添加" + PossibleStar_Name+"到首要列表");
                         }
                         else
                         {
@@ -1281,6 +1302,7 @@ namespace EDNavgation
                             SecondaryList_X.Add(PossibleStar_X);
                             SecondaryList_Y.Add(PossibleStar_Y);
                             SecondaryList_Z.Add(PossibleStar_Z);
+                            Console.WriteLine("[" + Counter + "]" + "添加" + PossibleStar_Name + "到次要列表");
                         }
                     }
                     else
@@ -1291,18 +1313,22 @@ namespace EDNavgation
                 }
                 else
                 {
+                    Console.WriteLine("[" + Counter + "]" + "无搜索结果");
                     goto NoResult;
                 }
             }
-
+            Reader.Close();
             //double FromPlayerToTarget_T = coordConvertToT(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
             //double FromPlayerToTarget_P = coordConvertToP(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
             double FromPlayerToNowNeutron_R = coordConvertToR(NowNeutron_X - Player_X, NowNeutron_Y - Player_Y, NowNeutron_Z - Player_Z);
 
+            string ThisTimeResult="";
+
             if (PrimaryList_Name.Count > 0)
             {
+                Console.WriteLine("[" + Counter + "]" + "调用首要列表");
                 double Try_Push=0;
-                string Try_Name;
+                string Try_Name="";
 
                 for (int counter = 0; counter < PrimaryList_Name.Count; counter++)
                 {
@@ -1333,7 +1359,8 @@ namespace EDNavgation
 
                 if (Try_Push > MyLovelyAnaconda * 2)
                 {
-                    //distance to target check
+                    ThisTimeResult = Try_Name;
+                    goto FinalResultCheck;
                 }
                 else
                 {
@@ -1347,10 +1374,13 @@ namespace EDNavgation
             ArrayList Seven = new ArrayList();
             ArrayList Eight = new ArrayList();
 
-            ArrayList FinalList = new ArrayList();
+            //ArrayList FinalList = new ArrayList();
+            System.Collections.ArrayList salesTotals = new System.Collections.ArrayList();
+
 
             if (SecondaryList_Name.Count > 0)
             {
+                Console.WriteLine("[" + Counter + "]" + "调用次要列表");
 
                 for (int counter = 0; counter < SecondaryList_Name.Count; counter++)
                 {
@@ -1366,10 +1396,10 @@ namespace EDNavgation
 
                     double FromNowNeutronToPossible_R = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
 
-                    if (FromNowNeutronToTarget_P - 45 < FromNowNeutronToPossible_P && 
-                        FromNowNeutronToPossible_P < FromNowNeutronToTarget_P + 45 && 
-                        FromNowNeutronToTarget_T - 45 < FromNowNeutronToPossible_T && 
-                        FromNowNeutronToPossible_T < FromNowNeutronToTarget_T + 45) 
+                    if (FromNowNeutronToTarget_P - 45 < FromNowNeutronToPossible_P &&
+                        FromNowNeutronToPossible_P < FromNowNeutronToTarget_P + 45 &&
+                        FromNowNeutronToTarget_T - 45 < FromNowNeutronToPossible_T &&
+                        FromNowNeutronToPossible_T < FromNowNeutronToTarget_T + 45)
                     {
                         double JumpNeeded = System.Math.Truncate(System.Math.Abs(FromNowNeutronToPossible_R / (MyLovelyAnaconda)));
                         if (JumpNeeded == 4)
@@ -1395,21 +1425,20 @@ namespace EDNavgation
                     }
                 }
 
-                string ThisTimeResult="";
-
                 if (Four.Count > 0)
                 {
-                    string Final_Name;
+                    Console.WriteLine("四组运算");
+                    string Final_Name = ""; //bug
                     for (int counter = 0; counter < Four.Count; counter++)
                     {
-                        int Index = Convert.ToInt16 (Four[counter].ToString());
+                        int Index = Convert.ToInt16(Four[counter].ToString());
                         double X = Convert.ToDouble(SecondaryList_X[Index].ToString());
                         double Y = Convert.ToDouble(SecondaryList_Y[Index].ToString());
                         double Z = Convert.ToDouble(SecondaryList_Z[Index].ToString());
                         string Name = SecondaryList_Name[Index].ToString();
 
                         double Distance = coordConvertToR(X - NowNeutron_X, Y - NowNeutron_Y, Z - NowNeutron_Z);
-                        double Final_Distance=1000;
+                        double Final_Distance = 1000;
 
                         if (counter == 0)
                         {
@@ -1425,13 +1454,16 @@ namespace EDNavgation
                             }
                         }
                     }
-                    Final_Name = ThisTimeResult;
+                    Console.WriteLine("四组，循环结束，得出结果" + Final_Name);
+                    ThisTimeResult = Final_Name;//bug
+                    Console.WriteLine("前往测试");
                     goto FinalResultCheck;
                 }
 
                 if (Five.Count > 0)
                 {
-                    string Final_Name;
+                    Console.WriteLine("五组运算");
+                    string Final_Name = "";
                     for (int counter = 0; counter < Five.Count; counter++)
                     {
                         int Index = Convert.ToInt16(Five[counter].ToString());
@@ -1457,13 +1489,15 @@ namespace EDNavgation
                             }
                         }
                     }
-                    Final_Name = ThisTimeResult;
+                    Console.WriteLine("五组，循环结束，得出结果" + Final_Name);
+                    ThisTimeResult = Final_Name;
                     goto FinalResultCheck;
                 }
 
                 if (Six.Count > 0)
                 {
-                    string Final_Name;
+                    Console.WriteLine("六组运算");
+                    string Final_Name = "";
                     for (int counter = 0; counter < Six.Count; counter++)
                     {
                         int Index = Convert.ToInt16(Six[counter].ToString());
@@ -1489,13 +1523,14 @@ namespace EDNavgation
                             }
                         }
                     }
-                    Final_Name = ThisTimeResult;
+                    ThisTimeResult = Final_Name;
                     goto FinalResultCheck;
                 }
 
                 if (Seven.Count > 0)
                 {
-                    string Final_Name;
+                    Console.WriteLine("七组运算");
+                    string Final_Name = "";
                     for (int counter = 0; counter < Seven.Count; counter++)
                     {
                         int Index = Convert.ToInt16(Seven[counter].ToString());
@@ -1521,13 +1556,14 @@ namespace EDNavgation
                             }
                         }
                     }
-                    Final_Name = ThisTimeResult;
+                    ThisTimeResult = Final_Name;
                     goto FinalResultCheck;
                 }
 
                 if (Eight.Count > 0)
                 {
-                    string Final_Name;
+                    Console.WriteLine("八组运算");
+                    string Final_Name = "";
                     for (int counter = 0; counter < Eight.Count; counter++)
                     {
                         int Index = Convert.ToInt16(Eight[counter].ToString());
@@ -1553,48 +1589,54 @@ namespace EDNavgation
                             }
                         }
                     }
-                    Final_Name = ThisTimeResult;
+                    ThisTimeResult = Final_Name;
                     goto FinalResultCheck;
-                }
-
-                FinalResultCheck:
-
-                sql = "SELECT X FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
-                Console.WriteLine(FirstResult);
-                cmd = new MySqlCommand(sql, conn);
-                double FinalResult_X = (double)cmd.ExecuteScalar();
-                sql = "SELECT Y FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
-                cmd = new MySqlCommand(sql, conn);
-                double FinalResult_Y = (double)cmd.ExecuteScalar();
-                sql = "SELECT Z FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
-                cmd = new MySqlCommand(sql, conn);
-                double FinalResult_Z = (double)cmd.ExecuteScalar();
-
-                double FromPlayerToTarget_T = coordConvertToT(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
-                double FromPlayerToTarget_P = coordConvertToP(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
-
-                double FromPlayerToFinalResult_T = coordConvertToT(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
-                double FromPlayerToFinalResult_P = coordConvertToP(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
-
-                if (FromPlayerToTarget_P - 45 < FromPlayerToFinalResult_P &&
-                    FromPlayerToFinalResult_P < FromPlayerToTarget_P + 45 &&
-                    FromPlayerToTarget_T - 45 < FromPlayerToFinalResult_T &&
-                    FromPlayerToFinalResult_T < FromPlayerToTarget_T + 45)
-                {
-                    FinalList.Add(ThisTimeResult);
-                    FirstResult = ThisTimeResult;
-                    goto Start;
                 }
                 else
                 {
-                    Console.WriteLine("计算结束");
-                    //return FinalList;
-                    return;
+                    goto NoResult;
                 }
             }
             else
             {
                 goto NoResult;
+            }
+
+            FinalResultCheck:
+
+            Console.WriteLine("最终校验" + ThisTimeResult +"这个星系");
+            sql = "SELECT X FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+            //Console.WriteLine(FirstResult);
+            cmd = new MySqlCommand(sql, conn);
+            double FinalResult_X = (double)cmd.ExecuteScalar();
+            sql = "SELECT Y FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            double FinalResult_Y = (double)cmd.ExecuteScalar();
+            sql = "SELECT Z FROM db WHERE Name Like '%" + ThisTimeResult + "%'";
+            cmd = new MySqlCommand(sql, conn);
+            double FinalResult_Z = (double)cmd.ExecuteScalar();
+
+            Reader.Close();
+
+            double FromPlayerToTarget_T = coordConvertToT(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+            double FromPlayerToTarget_P = coordConvertToP(Target_X - Player_X, Target_Y - Player_Y, Target_Z - Player_Z);
+
+            double FromPlayerToFinalResult_T = coordConvertToT(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
+            double FromPlayerToFinalResult_P = coordConvertToP(FinalResult_X - Player_X, FinalResult_Y - Player_Y, FinalResult_Z - Player_Z);
+
+            if (FromPlayerToTarget_P - 45 < FromPlayerToFinalResult_P && FromPlayerToFinalResult_P < FromPlayerToTarget_P + 45 && FromPlayerToTarget_T - 45 < FromPlayerToFinalResult_T && FromPlayerToFinalResult_T < FromPlayerToTarget_T + 45)
+            {
+                FirstResult = ThisTimeResult;
+                salesTotals.Add(ThisTimeResult);
+                conn.Close();
+                goto Start;
+            }
+            else
+            {
+                Console.WriteLine("计算结束");
+                //return FinalList;
+                conn.Close();
+                return salesTotals;
             }
 
             NoResult:
@@ -1605,27 +1647,29 @@ namespace EDNavgation
             NowNeutron_X = NewX;
             NowNeutron_Y = NewY;
             NowNeutron_Z = NewZ;
+            Console.WriteLine("[" + Counter + "]" + "无最终搜索结果");
+            conn.Close();
             goto Start2;
         }
         //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
         public static double coordConvertToR(double X, double Y, double Z)
         {
             double r = System.Math.Sqrt(X * X + Y * Y + Z * Z);
-            Console.WriteLine(r);
+            //Console.WriteLine(r);
             return r;
         }
 
         public static double coordConvertToT(double X, double Y, double Z)
         {
             double t = Math.Acos(Z / System.Math.Sqrt(X * X + Y * Y + Z * Z));
-            Console.WriteLine(t);
+            //Console.WriteLine(t);
             return t;
         }
 
         public static double coordConvertToP(double X, double Y, double Z)
         {
             double p = Math.Atan(Y / X);
-            Console.WriteLine(p);
+            //Console.WriteLine(p);
             return p;
         }
 

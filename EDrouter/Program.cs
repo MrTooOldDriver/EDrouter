@@ -24,10 +24,13 @@ namespace EDNavgation
         {
             EDrunning.EDChecker();
             //Navigation.SearchSystem(); //导航测试用
-            string firstResultTest = Navigation.FirstCalculation();
+            //string firstResultTest = Navigation.FirstCalculation();
+            string firstResultTest ="";
+            //Console.WriteLine("首次搜索输出" + firstResultTest);
 
-            Console.WriteLine("首次搜索输出" + firstResultTest);
-            
+            Console.WriteLine(Math.Atan(-1.7326) * (180/Math.PI));
+            Console.ReadKey();
+
             //Navigation.SecondaryCalculation(firstResultTest); 第一套算法
             //Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
 
@@ -327,7 +330,7 @@ namespace EDNavgation
             // 反实例，写三维
             // 假设此处玩家在SOL 0 0 0， 等待neko的代码
 
-            Console.WriteLine("**************"+Parser.JSONHandler().StarPos);
+            //Console.WriteLine("**************"+Parser.JSONHandler().StarPos);
 
             double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
             double playerX = 46.375;
@@ -336,17 +339,17 @@ namespace EDNavgation
             double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
             double searchVar = 0.5; //搜索范围变量 从1-0.2 
 
-            target_cood.x = target_cood.x - playerX;
-            target_cood.y = target_cood.y - playerY;
-            target_cood.z = target_cood.z - playerZ; //更新目标绝对坐标系至相对坐标系 （相对出发点）
+            //target_cood.x = target_cood.x - playerX;
+            //target_cood.y = target_cood.y - playerY;
+            //target_cood.z = target_cood.z - playerZ; //更新目标绝对坐标系至相对坐标系 （相对出发点）
 
             // target_cood 现在是相对坐标系
             // player 现在是相对坐标系的原点 0 0 0
             //直角坐标系操作
 
-            Console.WriteLine(target_cood.x + "," + target_cood.y + "," + target_cood.z + ","); //debug
+            //Console.WriteLine(target_cood.x + "," + target_cood.y + "," + target_cood.z + ","); //debug
             //double playerR = coordConvertToR(playerX, playerY, playerZ); //潜在多余或错误算法，暂时删除
-            double targetR = coordConvertToR(target_cood.x, target_cood.y, target_cood.z);
+            double targetR = coordConvertToR(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
             //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));//错误
             //double distanceBetween = System.Math.Abs(playerR - targetR); 错误算法
             //Console.WriteLine("两地直线距离" + targetR + "LY");
@@ -356,9 +359,9 @@ namespace EDNavgation
 
             //直角坐标系至球坐标系 player为原点 0 0 0
             //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
-            double target_Scood_R = coordConvertToR(target_cood.x,target_cood.y,target_cood.z);
-            double target_Scood_T = coordConvertToT(target_cood.x, target_cood.y, target_cood.z);
-            double target_Scood_P = coordConvertToP(target_cood.x, target_cood.y, target_cood.z);
+            double target_Scood_R = coordConvertToR(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
+            double target_Scood_T = coordConvertToT(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
+            double target_Scood_P = coordConvertToP(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
             Console.WriteLine("S_cood, R=" + target_Scood_R + "; T=" + target_Scood_T + "; P=" + target_Scood_P);
             //target_Scood 现在是球坐标系状态 相对坐标
 
@@ -1196,12 +1199,12 @@ namespace EDNavgation
         {
             string FirstResult = FirstResult_FromFirstCalculation;
             int Counter = 0;
+            ArrayList FinalOutput = new ArrayList();
+            FinalOutput.Add(FirstResult);
 
             Start:
 
             Console.WriteLine("输入:" + FirstResult);
-            ArrayList FinalOutput = new ArrayList();
-            FinalOutput.Add(FirstResult);
             string sql;
             string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
             MySqlConnection conn = new MySqlConnection(ConnectionString);
@@ -1284,8 +1287,14 @@ namespace EDNavgation
                     string PossibleStar_Name = Reader.GetString("Name");
                     double FromNowNeutronToPossibleStar_T = coordConvertToT(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
                     double FromNowNeutronToPossibleStar_P = coordConvertToP(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
+                    Console.WriteLine("[" + Counter + "]" + "FromNowNeutronToPossibleStar_T" + FromNowNeutronToPossibleStar_T + "，Name" + PossibleStar_Name);
+                    Console.WriteLine("[" + Counter + "]" + "FromNowNeutronToPossibleStar_P" + FromNowNeutronToPossibleStar_P + "，Name" + PossibleStar_Name);
+
+                    Console.WriteLine("[" + Counter + "]" + "FromNowNeutronToTarget_P" + FromNowNeutronToTarget_P);
+                    Console.WriteLine("[" + Counter + "]" + "FromNowNeutronToTarget_T" + FromNowNeutronToTarget_T);
+
                     if (FromNowNeutronToTarget_P - 90 < FromNowNeutronToPossibleStar_P && FromNowNeutronToPossibleStar_P < FromNowNeutronToTarget_P + 90
-                        && FromNowNeutronToTarget_T - 90 < FromNowNeutronToPossibleStar_T && FromNowNeutronToPossibleStar_T < FromNowNeutronToTarget_T + 90)
+                        && FromNowNeutronToTarget_T - 90 < FromNowNeutronToPossibleStar_T && FromNowNeutronToPossibleStar_T < FromNowNeutronToTarget_T + 90)  //bug
                     {
                         double DistanceToNext = coordConvertToR(PossibleStar_X - NowNeutron_X, PossibleStar_Y - NowNeutron_Y, PossibleStar_Z - NowNeutron_Z);
                         if (DistanceToNext < MyLovelyAnaconda * 4)
@@ -1375,7 +1384,7 @@ namespace EDNavgation
             ArrayList Eight = new ArrayList();
 
             //ArrayList FinalList = new ArrayList();
-            System.Collections.ArrayList salesTotals = new System.Collections.ArrayList();
+            //System.Collections.ArrayList salesTotals = new System.Collections.ArrayList();
 
 
             if (SecondaryList_Name.Count > 0)
@@ -1627,7 +1636,7 @@ namespace EDNavgation
             if (FromPlayerToTarget_P - 45 < FromPlayerToFinalResult_P && FromPlayerToFinalResult_P < FromPlayerToTarget_P + 45 && FromPlayerToTarget_T - 45 < FromPlayerToFinalResult_T && FromPlayerToFinalResult_T < FromPlayerToTarget_T + 45)
             {
                 FirstResult = ThisTimeResult;
-                salesTotals.Add(ThisTimeResult);
+                FinalOutput.Add(ThisTimeResult);
                 conn.Close();
                 goto Start;
             }
@@ -1636,7 +1645,7 @@ namespace EDNavgation
                 Console.WriteLine("计算结束");
                 //return FinalList;
                 conn.Close();
-                return salesTotals;
+                return FinalOutput;
             }
 
             NoResult:
@@ -1661,14 +1670,14 @@ namespace EDNavgation
 
         public static double coordConvertToT(double X, double Y, double Z)
         {
-            double t = Math.Acos(Z / System.Math.Sqrt(X * X + Y * Y + Z * Z));
+            double t = Math.Acos(Z / System.Math.Sqrt((X * X) + (Y * Y) + (Z * Z))) * (180 / Math.PI);
             //Console.WriteLine(t);
             return t;
         }
 
         public static double coordConvertToP(double X, double Y, double Z)
         {
-            double p = Math.Atan(Y / X);
+            double p = Math.Atan(Y / X) * (180 / Math.PI);
             //Console.WriteLine(p);
             return p;
         }

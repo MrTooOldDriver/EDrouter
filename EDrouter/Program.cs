@@ -22,24 +22,26 @@ namespace EDNavgation
     {
         static void Main(string[] args)
         {
-            EDrunning.EDChecker();
+            //EDrunning.EDChecker();
             //Navigation.SearchSystem(); //导航测试用
             //string firstResultTest = Navigation.FirstCalculation();
-            string firstResultTest ="";
+            //string firstResultTest ="";
             //Console.WriteLine("首次搜索输出" + firstResultTest);
 
-            Console.WriteLine(Math.Atan(-1.7326) * (180/Math.PI));
+            Console.WriteLine(Navigation.FirstCalculation());
+
+            //Console.WriteLine(Math.Atan(-1.7326) * (180/Math.PI));
             Console.ReadKey();
 
             //Navigation.SecondaryCalculation(firstResultTest); 第一套算法
             //Navigation.SecondaryCalculationType2(firstResultTest); //第二套算法
 
-            ArrayList Final = Navigation.SecondaryCalculationType3(firstResultTest);
+            //ArrayList Final = Navigation.SecondaryCalculationType3(firstResultTest);
 
-            for (int counter = 0; counter < Final.Count; counter++)
-            {
-                Console.WriteLine("第" + counter + 1 + "个导航点是：" + Final[counter].ToString());
-            }
+            //for (int counter = 0; counter < Final.Count; counter++)
+            //{
+            //    Console.WriteLine("第" + counter + 1 + "个导航点是：" + Final[counter].ToString());
+            //}
 
             Console.WriteLine("程序完成");
             Console.ReadKey();
@@ -269,7 +271,7 @@ namespace EDNavgation
             byte[] data = Encoding.UTF8.GetBytes(finalSearch);
             Console.WriteLine(data);
             req.ContentLength = data.Length;
-            using (Stream reqStream = req.GetRequestStream())
+            using (Stream reqStream = req.GetRequestStream()) //bug (if user doesnt have internet connection, the programs will carsh)
             {
                 reqStream.Write(data, 0, data.Length);
                 reqStream.Close();
@@ -313,108 +315,53 @@ namespace EDNavgation
             public object coords { get; set; }
         }
 
-        public static string FirstCalculation() //算法复杂，待功能完善之后进行优化
+        public static string FirstCalculation()
         {
             string returnResultFromSearch = Navigation.SearchSystem("");
-            //Console.WriteLine("返回值"+returnResultFromSearch);
-            Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);//一次解析 解析返回json
-
-            //Console.WriteLine(""+target.x+target.y+target.z+target.name+target.coords);
-
+            Coordinate target = JsonConvert.DeserializeObject<Coordinate>(returnResultFromSearch);
             string jsonReturn = Convert.ToString(target.coords);
-            //Console.WriteLine(""+jsonReturn);
-            Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);//二次解析 解析json内coodr
+            Coordinate target_cood = JsonConvert.DeserializeObject<Coordinate>(jsonReturn);
 
-            //Console.WriteLine("目标"+target.name+"X坐标为"+ target_cood.x+"Y坐标为" + target_cood.y+ "Z坐标为" + target_cood.z);
+            double anaconda = 50; //暂时假设这艘anaconda能跳50LY
 
-            // 反实例，写三维
-            // 假设此处玩家在SOL 0 0 0， 等待neko的代码
+            double Player_X = 46.375;
+            double Player_Y = -448.6875;
+            double Player_Z = -127.125; //debug 暂时设定玩家位置
 
-            //Console.WriteLine("**************"+Parser.JSONHandler().StarPos);
+            double FromPlayerToTarget_R = coordConvertToR(target_cood.x - Player_X, target_cood.y - Player_Y, target_cood.z - Player_Z);
+            double FromPlayerToTarget_P = coordConvertToP(target_cood.x - Player_X, target_cood.y - Player_Y, target_cood.z - Player_Z);
+            double FromPlayerToTarget_T = coordConvertToT(target_cood.x - Player_X, target_cood.y - Player_Y, target_cood.z - Player_Z);
 
-            double anaconda = 53.44; //暂时假设这艘anaconda能跳53.44LY
-            double playerX = 46.375;
-            double playerY = -448.6875;
-            double playerZ = -127.125; //debug 暂时设定玩家位置
-            double anaconda_boost = anaconda * 4; //上高速之后的搜索方法
-            double searchVar = 0.5; //搜索范围变量 从1-0.2 
+            double choosePoint = System.Math.Truncate(System.Math.Abs(FromPlayerToTarget_R / (500)));
 
-            //target_cood.x = target_cood.x - playerX;
-            //target_cood.y = target_cood.y - playerY;
-            //target_cood.z = target_cood.z - playerZ; //更新目标绝对坐标系至相对坐标系 （相对出发点）
-
-            // target_cood 现在是相对坐标系
-            // player 现在是相对坐标系的原点 0 0 0
-            //直角坐标系操作
-
-            //Console.WriteLine(target_cood.x + "," + target_cood.y + "," + target_cood.z + ","); //debug
-            //double playerR = coordConvertToR(playerX, playerY, playerZ); //潜在多余或错误算法，暂时删除
-            double targetR = coordConvertToR(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
-            //double distanceBetween = System.Math.Truncate(System.Math.Abs(playerR - targetR));//错误
-            //double distanceBetween = System.Math.Abs(playerR - targetR); 错误算法
-            //Console.WriteLine("两地直线距离" + targetR + "LY");
-            //double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda *4)));
-            double choosePoint = System.Math.Truncate(System.Math.Abs(targetR / (anaconda *6))); //跳跃次数处理
-            //Console.WriteLine("高速路预搜索点"+choosePoint+"个");
-
-            //直角坐标系至球坐标系 player为原点 0 0 0
-            //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
-            double target_Scood_R = coordConvertToR(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
-            double target_Scood_T = coordConvertToT(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
-            double target_Scood_P = coordConvertToP(target_cood.x - playerX, target_cood.y - playerY, target_cood.z - playerZ);
-            Console.WriteLine("S_cood, R=" + target_Scood_R + "; T=" + target_Scood_T + "; P=" + target_Scood_P);
-            //target_Scood 现在是球坐标系状态 相对坐标
-
-            //潜在BUG，目前都在用double，可以获取高精度但是一旦奇怪的数字进这套算法系统可能崩溃
-            //对策 改float类
-
-            //搜索校验值 最大（var=1）为左右上下180度大扇面 最小var=0.2 左右上下36度小扇面
-            //mdzz 你 +-180不就是一个180*2 360的扇面了么，这不等于没有么？？？？
-            double Verify_T_Upper = target_Scood_T + (180 / searchVar);
-            double Verify_T_Lower = target_Scood_T - (180 / searchVar);
-            double Verify_P_Upper = target_Scood_P + (180 / searchVar);
-            double Verify_P_Lower = target_Scood_P - (180 / searchVar);
-            //这段代码好像没用上??? ←我SB了，其实用上了，在下面做中子星多选项和单选项筛选的时候
-
-            //Debug用的textbox
-            TextBox textbox1 = new TextBox();
-
-            ArrayList FinalList = new ArrayList();
-
-            //debug. using loacl database.
             string sql;
             string ConnectionString = "server=127.0.0.1;Database=neutrondb;uid=user;pwd=123456789";
             MySqlConnection conn = new MySqlConnection(ConnectionString);
-            string ResultFromDatabase;
-            
-            //debug
 
-            Point3D Navpoint = new Point3D(0,0,0);
             ArrayList FirstList = new ArrayList();
             ArrayList SecondList = new ArrayList();
 
-            // ArrayList choosePointToE = new ArrayList();
+            Console.WriteLine("搜索点" + choosePoint + "个");
+
             for (double counter = 0; counter <= 1000; counter++)
             {
                 if (counter > choosePoint)
                     break;
-                double arrPoint = 0;
-                arrPoint = arrPoint + (counter * anaconda * 6);
 
-                Navpoint.X = Convert.ToSingle((ScoordConvertToX(arrPoint, target_Scood_T, target_Scood_P)) + playerX);
-                Navpoint.Y = Convert.ToSingle((ScoordConvertToY(arrPoint, target_Scood_T, target_Scood_P)) + playerY);
-                Navpoint.Z = Convert.ToSingle((ScoordConvertToZ(arrPoint, target_Scood_T, target_Scood_P)) + playerZ);
-                //Navpoint 绝对坐标系
+                Console.WriteLine("正在进行第" + counter + "次搜索");
 
-                double VarTestInt = 6;
+                double SearchZoneCentre_R = 0 + (counter*500);
 
-                //double searchBetween_X_Upper = Navpoint.X + (anaconda * 6); //*6是变量
-                double searchBetween_X_Upper = Navpoint.X + (anaconda * VarTestInt);
-                double searchBetween_X_Lower = Navpoint.X - (anaconda * VarTestInt);
-                double searchBetween_Y_Upper = Navpoint.Y + (anaconda * VarTestInt); 
-                double searchBetween_Y_Lower = Navpoint.Y - (anaconda * VarTestInt);
-                double searchBetween_Z_Upper = Navpoint.Z + (anaconda * VarTestInt); 
-                double searchBetween_Z_Lower = Navpoint.Z - (anaconda * VarTestInt);
+                double SearchPoint_X = (ScoordConvertToX(SearchZoneCentre_R, FromPlayerToTarget_T, FromPlayerToTarget_P)) + Player_X;
+                double SearchPoint_Y = (ScoordConvertToY(SearchZoneCentre_R, FromPlayerToTarget_T, FromPlayerToTarget_P)) + Player_Y;
+                double SearchPoint_Z = (ScoordConvertToZ(SearchZoneCentre_R, FromPlayerToTarget_T, FromPlayerToTarget_P)) + Player_Z;
+
+                double searchBetween_X_Upper = SearchPoint_X + 250;
+                double searchBetween_X_Lower = SearchPoint_X - 250;
+                double searchBetween_Y_Upper = SearchPoint_Y + 250; 
+                double searchBetween_Y_Lower = SearchPoint_Y - 250;
+                double searchBetween_Z_Upper = SearchPoint_Z + 250; 
+                double searchBetween_Z_Lower = SearchPoint_Z - 250;
 
                 conn.Open();
 
@@ -423,79 +370,96 @@ namespace EDNavgation
                 cmd = new MySqlCommand(sql, conn);
                 Console.WriteLine("打开连接,开始第"+counter+"搜索");
 
-                bool cancel = false;
+                MySqlDataReader Reader = cmd.ExecuteReader();
 
-               MySqlDataReader Reader = cmd.ExecuteReader();
-                while (Reader.Read())
-                {
-                    if (Reader.HasRows)
+                do
+                    while (Reader.Read())
                     {
-                        Console.WriteLine("已经发现");
-                        double tryFirst = coordConvertToR(
-                            target_cood.x - Convert.ToDouble(Reader.GetString("X")),
-                            target_cood.y - Convert.ToDouble(Reader.GetString("Y")),
-                            target_cood.z - Convert.ToDouble(Reader.GetString("Z"))
-                                                          );
-                        if (tryFirst < targetR)
+                        if (Reader.HasRows)
                         {
-                            cancel = true;
-                            Console.WriteLine("****核实确认****"+Reader.GetString("Name"));
-                            FirstList.Add(Reader.GetString("Name"));
+                            Console.WriteLine("在范围内发现中子星" + Reader.FieldCount + "个");
+                            for (int counter2 = 0; counter2 < Reader.FieldCount; counter2++)
+                            {
+                                double FromPLayerToTryNeutron_T = coordConvertToT(
+                                Convert.ToDouble(Reader.GetString("X")) - Player_X,
+                                Convert.ToDouble(Reader.GetString("Y")) - Player_Y,
+                                Convert.ToDouble(Reader.GetString("Z")) - Player_Z);
+
+                                double FromPLayerToTryNeutron_P = coordConvertToP(
+                                    Convert.ToDouble(Reader.GetString("X")) - Player_X,
+                                    Convert.ToDouble(Reader.GetString("Y")) - Player_Y,
+                                    Convert.ToDouble(Reader.GetString("Z")) - Player_Z);
+
+                                if (FromPlayerToTarget_T - 90 <= FromPLayerToTryNeutron_T && FromPLayerToTryNeutron_T <= FromPlayerToTarget_T + 90
+                                    && FromPlayerToTarget_P - 90 <= FromPLayerToTryNeutron_P && FromPLayerToTryNeutron_P <= FromPlayerToTarget_P + 90)
+                                {
+                                    Console.WriteLine("[" + counter2 + "]****核实确认****" + Reader.GetString("Name"));
+                                    FirstList.Add(Reader.GetString("Name"));
+                                    //http request improvement needed*
+                                }
+                                else
+                                {
+                                    Console.WriteLine("[" + counter2 + "]****核实不通过****");
+                                }
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("核实不通过");
+                            Console.WriteLine("ERROR:Reader DOESNT HAS ROWS");
                         }
                     }
-                    //string result = Reader.GetString("Name");
-                    //Console.WriteLine(result+ "在第" +counter);
-                }
-                if (cancel == true)
+                while (Reader.NextResult());
+
+                Reader.Close();
+
+                Console.WriteLine("6666666666666666666666666");
+                Console.ReadKey();
+
+                Console.WriteLine("一共有" + FirstList.Count + "个结果加入到下级审核");
+
+                if (FirstList.Count > 1)
                     conn.Close();
-                if (cancel == true)
+                if (FirstList.Count > 1)
                     break;
                 conn.Close();
 
-                //上高速前若多个选项需要细致校对
-                //优选条件 离玩家近 或离判定点近
-                //第一下neutron 然后接下来要怎么搜索 
-                //搜索一下，反馈 要是有，一个一个校验距离搜索点的距离和离目标距离，择优选择
-                //要是第一下没有，就扩大双倍距离（这里取决于效率值了）然后有了
-                //还没有就直接计算下一个点搜索
-
-
-
             }
-           // Console.WriteLine("发现了" + FirstList.Count + "个选项");
-            //string FirstResult="";
+
             string FirstResult = "";
 
             if (FirstList.Count == 1) //临时
             {
                 Console.WriteLine("本次只找到了一个选项，正在进行最终可靠性测试");
-                Console.WriteLine("导航参考点:" + Navpoint.X + " AND " + Navpoint.Y + " AND " + Navpoint.Z);
 
                 conn.Open();
                 string sqlSearch;
-                double X;
-                double Y;
-                double Z;
-                double NeutronP;
-                double NeutronT;
+                double TryNeutron_X;
+                double TryNeutron_Y;
+                double TryNeutron_Z;
+
+                double FromPlayerToTryNeutron_P;
+                double FromPlayerToTryNeutron_T;
+
                 sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
                 Console.WriteLine(FirstList[0].ToString());
                 MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
-                X = (double)cmd.ExecuteScalar();
+                TryNeutron_X = (double)cmd.ExecuteScalar();
+
                 sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
                 cmd = new MySqlCommand(sqlSearch, conn);
-                Y = (double)cmd.ExecuteScalar();
+                TryNeutron_Y = (double)cmd.ExecuteScalar();
+
                 sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FirstList[0].ToString() + "%'";
                 cmd = new MySqlCommand(sqlSearch, conn);
-                Z = (double)cmd.ExecuteScalar();
+                TryNeutron_Z = (double)cmd.ExecuteScalar();
+
                 conn.Close();
-                NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
-                NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
-                if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+
+                FromPlayerToTryNeutron_P = coordConvertToP(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+                FromPlayerToTryNeutron_T = coordConvertToT(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+
+                if (FromPlayerToTarget_P-45 <= FromPlayerToTryNeutron_P && FromPlayerToTryNeutron_P <= FromPlayerToTarget_P+45 
+                    && FromPlayerToTarget_T-45 <= FromPlayerToTryNeutron_T && FromPlayerToTryNeutron_T <= FromPlayerToTarget_T+45)
                 {
                     Console.WriteLine("校验通过");
                     return(FirstList[0].ToString());
@@ -505,7 +469,7 @@ namespace EDNavgation
                     Console.WriteLine("校验不通过，放弃这个点搜索");
                 }
             }
-            else //多结果筛选，离中心线（球坐标系T P 表达）越近，越容易被筛选 13.05.2017
+            else //多结果筛选，离中心线（球坐标系T P 表达）越近，越容易被筛选 13.05.2017 
             {
                 string FromList;
                 string FromSecondList;
@@ -514,26 +478,36 @@ namespace EDNavgation
                     FromList = FirstList[counter].ToString();
                     Console.WriteLine("正在检测" + FromList + "是否最佳");
                     string sqlSearch;
-                    double X;
-                    double Y;
-                    double Z;
-                    double NeutronP;
-                    double NeutronT;
+
+                    double TryNeutron_X;
+                    double TryNeutron_Y;
+                    double TryNeutron_Z;
+
+                    double FromPlayerToTryNeutron_P;
+                    double FromPlayerToTryNeutron_T;
+
                     conn.Open();
+
                     sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromList + "%'";
                     Console.WriteLine(FromList);
                     MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
-                    X = (double)cmd.ExecuteScalar();
+                    TryNeutron_X = (double)cmd.ExecuteScalar();
+
                     sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromList + "%'";
                     cmd = new MySqlCommand(sqlSearch, conn);
-                    Y = (double)cmd.ExecuteScalar();
+                    TryNeutron_Y = (double)cmd.ExecuteScalar();
+
                     sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromList + "%'";
                     cmd = new MySqlCommand(sqlSearch, conn);
-                    Z = (double)cmd.ExecuteScalar();
+                    TryNeutron_Z = (double)cmd.ExecuteScalar();
+
                     conn.Close();
-                    NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
-                    NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
-                    if (Verify_P_Lower <= NeutronP && NeutronP <= Verify_P_Upper && Verify_T_Lower <= NeutronT && NeutronT <= Verify_T_Upper)
+
+                    FromPlayerToTryNeutron_P = coordConvertToP(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+                    FromPlayerToTryNeutron_T = coordConvertToT(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+
+                    if (FromPlayerToTarget_P-45 <= FromPlayerToTryNeutron_P && FromPlayerToTryNeutron_P <= FromPlayerToTarget_P+45
+                        && FromPlayerToTarget_T-45 <= FromPlayerToTryNeutron_T && FromPlayerToTryNeutron_T <= FromPlayerToTarget_T+45)
                     {
                         SecondList.Add(FromList);
                         Console.WriteLine("***第一校验通过***");
@@ -553,29 +527,40 @@ namespace EDNavgation
                 {
                     FromSecondList = FirstList[counter].ToString();
                     string sqlSearch;
-                    double X;
-                    double Y;
-                    double Z;
+
+                    double TryNeutron_X;
+                    double TryNeutron_Y;
+                    double TryNeutron_Z;
+
                     double pDiff;
                     double tDiff;
-                    double NeutronP;
-                    double NeutronT;
+
+                    double FromPLayerToTryNeutron_P;
+                    double FromPLayerToTryNeutron_T;
+
                     conn.Open();
+
                     sqlSearch = "SELECT X FROM db WHERE Name Like '%" + FromSecondList + "%'";
                     Console.WriteLine(FromSecondList);
                     MySqlCommand cmd = new MySqlCommand(sqlSearch, conn);
-                    X = (double)cmd.ExecuteScalar();
+                    TryNeutron_X = (double)cmd.ExecuteScalar();
+
                     sqlSearch = "SELECT Y FROM db WHERE Name Like '%" + FromSecondList + "%'";
                     cmd = new MySqlCommand(sqlSearch, conn);
-                    Y = (double)cmd.ExecuteScalar();
+                    TryNeutron_Y = (double)cmd.ExecuteScalar();
+
                     sqlSearch = "SELECT Z FROM db WHERE Name Like '%" + FromSecondList + "%'";
                     cmd = new MySqlCommand(sqlSearch, conn);
-                    Z = (double)cmd.ExecuteScalar();
+                    TryNeutron_Z = (double)cmd.ExecuteScalar();
+
                     conn.Close();
-                    NeutronP = coordConvertToP(X - playerX, Y - playerY, Z - playerZ);
-                    NeutronT = coordConvertToT(X - playerX, Y - playerY, Z - playerZ);
-                    pDiff = Math.Abs(Math.Abs(NeutronP) - Math.Abs(target_Scood_P));
-                    tDiff = Math.Abs(Math.Abs(NeutronT) - Math.Abs(target_Scood_T));
+
+                    FromPLayerToTryNeutron_P = coordConvertToP(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+                    FromPLayerToTryNeutron_T = coordConvertToT(TryNeutron_X - Player_X, TryNeutron_Y - Player_Y, TryNeutron_Z - Player_Z);
+
+                    pDiff = Math.Abs(Math.Abs(FromPLayerToTryNeutron_P) - Math.Abs(FromPlayerToTarget_P));
+                    tDiff = Math.Abs(Math.Abs(FromPLayerToTryNeutron_T) - Math.Abs(FromPlayerToTarget_T));
+
                     if (counter == 0)
                     {
                         final_pDiff = pDiff;
@@ -583,6 +568,7 @@ namespace EDNavgation
                         final_Name = FromSecondList;
                         Console.WriteLine("第一次写入，不对比");
                     }
+
                     else
                     {
                         if (pDiff < final_pDiff && tDiff < final_tDiff)
@@ -602,12 +588,14 @@ namespace EDNavgation
                 Console.WriteLine("TEST" + final_Name);
                 FirstResult = final_Name;
             }
+
             return FirstResult;
         }
 
         //public ArrayList YEEE = new ArrayList();
 
         //ArrayList SecondaryCalculation = new ArrayList(); 做好了再说
+
         public static void SecondaryCalculation(string FirstResult)
         {
             Console.WriteLine("输入:" + FirstResult);
@@ -1660,7 +1648,9 @@ namespace EDNavgation
             conn.Close();
             goto Start2;
         }
+
         //Note radial distance=r ; polar angle θ (theta)=t ; azimuthal angle φ (phi)=p;
+
         public static double coordConvertToR(double X, double Y, double Z)
         {
             double r = System.Math.Sqrt(X * X + Y * Y + Z * Z);
@@ -1671,14 +1661,14 @@ namespace EDNavgation
         public static double coordConvertToT(double X, double Y, double Z)
         {
             double t = Math.Acos(Z / System.Math.Sqrt((X * X) + (Y * Y) + (Z * Z))) * (180 / Math.PI);
-            //Console.WriteLine(t);
+            Console.WriteLine(t);
             return t;
         }
 
         public static double coordConvertToP(double X, double Y, double Z)
         {
             double p = Math.Atan(Y / X) * (180 / Math.PI);
-            //Console.WriteLine(p);
+            Console.WriteLine(p);
             return p;
         }
 

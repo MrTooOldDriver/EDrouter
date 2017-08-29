@@ -1,22 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-using System.Security.Permissions;
-using System.Diagnostics;
-using System.Collections;
-using System.Net;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Windows;
-using System.Windows.Forms.DataVisualization.Charting;
-using MySql.Data.MySqlClient;
-using System.Windows.Forms; //非GUI一部分，开发所用
-using System.Drawing; //开发用
 using Reader;
-using Navigation;
 
 namespace EDRouter
 {
